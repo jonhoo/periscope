@@ -1,0 +1,37 @@
+\documentclass[letterpaper]{scrartcl}
+\usepackage[nomarkers,figuresonly]{endfloat}
+\renewcommand{\efloatseparator}{\mbox{}}
+\usepackage[margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+\title{6.869 Advances in Computer Vision\\Final Project Proposal}
+\subtitle{Mini Places Challenge}
+\author{David Bau, Jon Gjengset, Nicholas Hynes}
+
+\begin{document}
+\maketitle
+
+Our goal is to reach at least a 75\% top-5 accuracy for the Mini Places
+Challenge by constructing a Convolutional Neural Net.\ In order to reach
+this level of accuracy, we want to explore the following ideas:
+\begin{enumerate}
+\item Experiment with CNN visualization to aid us in identifying
+	areas of the network that are not being trained well. See
+	\url{http://arxiv.org/abs/1311.2901}.
+\item Apply unconventional preprocessing to the training data. For
+	example, can a neural network do recognition on FFT input?
+\item Apply autoencoders during pre-training. Can we build more
+	effective, deeper network using autoencoders? See
+	\url{http://www.jmlr.org/papers/volume11/vincent10a/vincent10a.pdf}
+	and \url{http://arxiv.org/pdf/1310.8499.pdf}.
+\item Explore more traditional pre-processing ideas. In addition to
+	blurring, rotation, cropping, and flipping, we could experiment
+	with warping the image or perspective distortion.
+\item Experiment with `attention''-seeking neural nets that combine a
+	recurrent network with a CNN to see if we can focus the CNN's
+	attention to interesting parts of the image. See
+	\url{http://papers.nips.cc/paper/5542-recurrent-models-of-visual-attention.pdf}.
+\end{enumerate}
+\end{document}
