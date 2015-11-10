@@ -17,6 +17,10 @@ Our goal is to reach at least a 75\% top-5 accuracy for the Mini Places
 Challenge by constructing a Convolutional Neural Net.\ In order to reach
 this level of accuracy, we want to explore the following ideas:
 \begin{enumerate}
+\item Experiment with variations on the number, size and type of layers in our
+	network architecture, for example, experiment with more aggressive
+	pooling or alternatives to fully connected layers, to try to speed
+	training for deeper networks.
 \item Experiment with CNN visualization to aid us in identifying
 	areas of the network that are not being trained well. See
 	\url{http://arxiv.org/abs/1311.2901}.
@@ -34,4 +38,13 @@ this level of accuracy, we want to explore the following ideas:
 	attention to interesting parts of the image. See
 	\url{http://papers.nips.cc/paper/5542-recurrent-models-of-visual-attention.pdf}.
 \end{enumerate}
+
+\section*{Implementation Strategy}
+
+We are set up to work with Theano with Lasagne, although Google just released
+TensorFlow, and we are considering using that platform.
+
+Our approach will be to try the above ideas iteratively, keeping the ones
+that work and leaving behind the ones that don't.
+
 \end{document}
