@@ -19,6 +19,7 @@ parser.add_argument('-r', '--reserve', type=float, help='percentage of samples t
 parser.add_argument('-l', '--learning', type=float, help='learning rate', default=0.01)
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=100)
+parser.add_argument('-s', '--stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
@@ -112,6 +113,8 @@ for epoch in range(args.epochs):
         train_err += train_fn(batch[0], batch[1])
         p.update(i)
         i = i+1
+        if args.stop != 0 and i > args.stop:
+            break
 
     subtask("Doing forward pass on validation data (size: {})".format(len(X_val)))
     # Also do a validation data forward pass

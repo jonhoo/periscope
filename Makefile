@@ -1,17 +1,29 @@
 MMAP_FILES ?= ./tagged
 MP_DATA ?= ./mp-data
 
-RAW = $(MMAP_FILES)/train.labels.db \
-      $(MMAP_FILES)/train.images.db \
-      $(MMAP_FILES)/val.images.db \
-      $(MMAP_FILES)/test.images.db \
+RAW = $(MMAP_FILES)/full/train.labels.db \
+      $(MMAP_FILES)/full/train.images.db \
+      $(MMAP_FILES)/full/val.images.db \
+      $(MMAP_FILES)/full/test.images.db \
 
-solve: $(RAW)
-	./main.py $(MMAP_FILES)
+SRAW = $(MMAP_FILES)/small/train.labels.db \
+       $(MMAP_FILES)/small/train.images.db \
+       $(MMAP_FILES)/small/val.images.db \
+       $(MMAP_FILES)/small/test.images.db \
 
-$(RAW): prepare.py
-	mkdir -p $(MMAP_FILES)
-	./prepare.py $(MP_DATA)/images/ $(MMAP_FILES)
+solve-small: $(SRAW) Makefile
+	./main.py -e5 -b30 -s5 $(MMAP_FILES)/small
+
+solve: $(RAW) Makefile
+	./main.py $(MMAP_FILES)/full
+
+$(SRAW): prepare.py Makefile
+	mkdir -p $(MMAP_FILES)/small
+	./prepare.py -l1000 $(MP_DATA)/images/ $(MMAP_FILES)/small
+
+$(RAW): prepare.py Makefile
+	mkdir -p $(MMAP_FILES)/full
+	./prepare.py $(MP_DATA)/images/ $(MMAP_FILES)/full
 
 clean:
-	rm -f $(RAW)
+	rm -f $(RAW) $(SRAW)
