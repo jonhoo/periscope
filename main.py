@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from progressbar import ProgressBar
+from termcolor import colored
 import argparse
 import lasagne
 import theano
@@ -20,7 +22,15 @@ parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
-print("Loading data...")
+def section(msg):
+    print(colored("\n::", "blue", attrs=["bold"]), colored(msg, attrs=["bold"]))
+def task(msg):
+    print(colored("==>", "green", attrs=["bold"]), colored(msg, attrs=["bold"]))
+def subtask(msg):
+    print(colored(" ->", "blue", attrs=["bold"]), colored(msg, attrs=["bold"]))
+
+section("Setup")
+task("Loading data")
 y_train = numpy.memmap(os.path.join(args.tagged, "train.labels.db"), dtype=numpy.int32, mode='r')
 X_train = numpy.memmap(os.path.join(args.tagged, "train.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_train), 3, 128, 128))
 
@@ -29,7 +39,7 @@ reserved = int(args.reserve * len(y_train) / 100.0)
 X_train, X_val, X_test = X_train[:-2*reserved], X_train[-2*reserved:-reserved], X_train[-reserved:]
 y_train, y_val, y_test = y_train[:-2*reserved], y_train[-2*reserved:-reserved], y_train[-reserved:]
 
-print("Building model and compiling functions...")
+task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
 input_var = T.tensor4('X')
 target_var = T.ivector('y')
@@ -87,53 +97,59 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
 
+section("Training")
 # Finally, launch the training loop.
-print("Starting training...")
-# We iterate over epochs:
 for epoch in range(args.epochs):
-    # In each epoch, we do a full pass over the training data:
-    train_err = 0
-    train_batches = 0
+    task("Starting training epoch {}".format(epoch))
     start_time = time.time()
-    nbatches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
-    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
-        started = time.time()
-        inputs, targets = batch
-        train_err += train_fn(inputs, targets)
-        train_batches += 1
-        if args.verbose != 0:
-            print("Batch {} of {} took {:.3f}s".format(
-                train_batches, nbatches, time.time() - started))
 
-    # And a full pass over the validation data:
+    # In each epoch, we do a pass over minibatches of the training data:
+    train_err = 0
+    train_batches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
+    p = ProgressBar(max_value = train_batches).start()
+    i = 1
+    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
+        train_err += train_fn(batch[0], batch[1])
+        p.update(i)
+        i = i+1
+
+    subtask("Doing forward pass on validation data (size: {})".format(len(X_val)))
+    # Also do a validation data forward pass
     val_err = 0
     val_acc = 0
-    val_batches = 0
+    val_batches = len(range(0, len(X_val) - args.batchsize + 1, args.batchsize))
+    p = ProgressBar(max_value = val_batches).start()
+    i = 1
     for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        inputs, targets = batch
-        err, acc = val_fn(inputs, targets)
+        err, acc = val_fn(batch[0], batch[1])
         val_err += err
         val_acc += acc
-        val_batches += 1
+        p.update(i)
+        i = i+1
 
     # Then we print the results for this epoch:
-    print("Epoch {} of {} took {:.3f}s".format(
-        epoch + 1, args.epochs, time.time() - start_time))
-    print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-    print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
-    print("  validation accuracy:\t\t{:.2f} %".format(
-        val_acc / val_batches * 100))
+    subtask("Epoch results: {:.6f}/{:.6f}/{:.2f}% (tloss, vloss, vacc)".format(
+        train_err / train_batches,
+        val_err / val_batches,
+        val_acc / val_batches * 100
+    ))
 
+section("Evaluation")
 # After training, we compute and print the test error:
+task("Evaluating performance on test data set")
 test_err = 0
 test_acc = 0
-test_batches = 0
+test_batches = len(range(0, len(X_test) - args.batchsize + 1, args.batchsize))
+p = ProgressBar(max_value = test_batches).start()
+i = 1
 for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
-    inputs, targets = batch
-    err, acc = val_fn(inputs, targets)
+    err, acc = val_fn(batch[0], batch[1])
     test_err += err
     test_acc += acc
-    test_batches += 1
-print("Final results:")
-print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
-print("  test accuracy:\t\t{:.2f} %".format(test_acc / test_batches * 100))
+    p.update(i)
+    i = i+1
+
+print(colored(" ==> Final results: {:.6f} loss, {:.2f}% accuracy <== ".format(
+    test_err / test_batches,
+    test_acc / test_batches * 100
+), "green", attrs=["bold"]))
