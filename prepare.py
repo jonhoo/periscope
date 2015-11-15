@@ -10,6 +10,7 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument('images', help='path to images/')
 parser.add_argument('outdir', help='path to directory in which to place serialized data files')
+parser.add_argument('-l', '--limit', type=int, help='limit number of images to sample', default=0)
 args = parser.parse_args()
 
 def dir2nd(directory, into):
@@ -19,8 +20,8 @@ def dir2nd(directory, into):
             N += 1
 
     # Optionally limit length of training data for slow machines
-    if N > 500:
-        N = 500
+    if args.limit > 0 and N > args.limit:
+        N = args.limit
 
     i = 0
     images = numpy.memmap(into, dtype=numpy.float32, mode='w+', shape=(N, 3, 128, 128))
