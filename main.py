@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from progressbar import ProgressBar
-from termcolor import colored
+from pretty import *
 import argparse
 import lasagne
 import theano
@@ -22,13 +22,6 @@ parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch
 parser.add_argument('-s', '--stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
-
-def section(msg):
-    print(colored("\n::", "blue", attrs=["bold"]), colored(msg, attrs=["bold"]))
-def task(msg):
-    print(colored("==>", "green", attrs=["bold"]), colored(msg, attrs=["bold"]))
-def subtask(msg):
-    print(colored(" ->", "blue", attrs=["bold"]), colored(msg, attrs=["bold"]))
 
 section("Setup")
 task("Loading data")

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from progressbar import ProgressBar
+from pretty import *
 import scipy.ndimage
 import argparse
 import os.path
@@ -30,6 +32,7 @@ def dir2nd(directory, into):
 
     i = 0
     dirs_left = limit_dirs
+    p = ProgressBar(max_value = N, redirect_stdout=True).start()
     images = numpy.memmap(into, dtype=numpy.float32, mode='w+', shape=(N, 3, 128, 128))
     for root, dirs, files in os.walk(directory, followlinks=True):
         if dirs_left == 0:
@@ -40,8 +43,7 @@ def dir2nd(directory, into):
             images[i] = numpy.transpose(scipy.ndimage.imread(os.path.join(root, img)), [2, 0, 1]) / 255.0
 
             i += 1
-            if (i+1) % 1000 == 0:
-                print('Processed {} out of {} files'.format(i+1, N), file=sys.stderr)
+            p.update(i)
 
             imgs += 1
             if args.limit != 0 and imgs == MAX_PER_DIR:
@@ -49,23 +51,28 @@ def dir2nd(directory, into):
 
         if len(files) != 0:
             dirs_left -= 1
+    p.finish()
 
     del images
     return N
 
-print("Extracting training images...")
-N = dir2nd(os.path.join(args.images, "train"), os.path.join(args.outdir, "train.images.db"))
+section("Dataset preparation")
 
-print("Extracting validation images...")
+task("Extracting validation images")
 dir2nd(os.path.join(args.images, "val"), os.path.join(args.outdir, "val.images.db"))
 
-print("Extracting test images...")
+task("Extracting test images")
 dir2nd(os.path.join(args.images, "test"), os.path.join(args.outdir, "test.images.db"))
 
-print("Extracting image labels...")
+task("Preparing training dataset")
+subtask("Extracting training images...")
+N = dir2nd(os.path.join(args.images, "train"), os.path.join(args.outdir, "train.images.db"))
+
 i = 0
 categories = {}
 dirs_left = limit_dirs
+subtask("Extracting image labels...")
+p = ProgressBar(max_value = N, redirect_stdout=True).start()
 labels = numpy.memmap(os.path.join(args.outdir, "train.labels.db"), dtype=numpy.int32, mode='w+', shape=(N, ))
 for root, dirs, files in os.walk(os.path.join(args.images, "train"), followlinks=True):
     if dirs_left == 0:
@@ -80,9 +87,9 @@ for root, dirs, files in os.walk(os.path.join(args.images, "train"), followlinks
             categories[category] = label
 
         labels[i] = categories[category]
-        if (i+1) % 10000 == 0:
-            print('Labelled {} out of {} images'.format(i+1, N), file=sys.stderr)
+
         i += 1
+        p.update(i)
 
         imgs += 1
         if args.limit != 0 and imgs == MAX_PER_DIR:
