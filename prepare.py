@@ -21,13 +21,13 @@ limit_dirs = -1
 if args.limit != 0:
     limit_dirs = numpy.ceil(args.limit / float(MAX_PER_DIR))
 
-def dir2nd(directory, into):
+def dir2nd(directory, into, ignore_limit=False):
     N = 0
     for root, dirs, files in os.walk(directory, followlinks=True):
         for img in files:
             N += 1
 
-    if args.limit != 0 and args.limit < N:
+    if not ignore_limit and args.limit != 0 and args.limit < N:
         N = args.limit
 
     i = 0
@@ -35,7 +35,7 @@ def dir2nd(directory, into):
     p = ProgressBar(max_value = N, redirect_stdout=True).start()
     images = numpy.memmap(into, dtype=numpy.float32, mode='w+', shape=(N, 3, 128, 128))
     for root, dirs, files in os.walk(directory, followlinks=True):
-        if dirs_left == 0:
+        if not ignore_limit and dirs_left == 0:
             break
 
         imgs = 0
@@ -46,7 +46,7 @@ def dir2nd(directory, into):
             p.update(i)
 
             imgs += 1
-            if args.limit != 0 and imgs == MAX_PER_DIR:
+            if not ignore_limit and args.limit != 0 and imgs == MAX_PER_DIR:
                 break
 
         if len(files) != 0:
@@ -59,10 +59,10 @@ def dir2nd(directory, into):
 section("Dataset preparation")
 
 task("Extracting validation images")
-dir2nd(os.path.join(args.images, "val"), os.path.join(args.outdir, "val.images.db"))
+dir2nd(os.path.join(args.images, "val"), os.path.join(args.outdir, "val.images.db"), True)
 
 task("Extracting test images")
-dir2nd(os.path.join(args.images, "test"), os.path.join(args.outdir, "test.images.db"))
+dir2nd(os.path.join(args.images, "test"), os.path.join(args.outdir, "test.images.db"), True)
 
 task("Preparing training dataset")
 subtask("Extracting training images...")
