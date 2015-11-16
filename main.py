@@ -14,11 +14,11 @@ import os.path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('tagged', help='path to directory containing prepared files')
-parser.add_argument('-e', '--epochs', type=int, help='number of epochs', default=100)
+parser.add_argument('-e', '--epochs', type=int, help='number of epochs', default=100) # TODO: dictated by number of learning rates
 parser.add_argument('-r', '--reserve', type=float, help='percentage of samples to reserve for validation and testing', default=5)
-parser.add_argument('-l', '--learning', type=float, help='learning rate', default=0.01)
+parser.add_argument('-l', '--learning', type=float, help='learning rate', default=0.01) # TODO: variable learning rate
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
-parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=100)
+parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
@@ -42,14 +42,23 @@ target_var = T.ivector('y')
 # create a small convolutional neural network
 from lasagne.nonlinearities import leaky_rectify, softmax
 network = lasagne.layers.InputLayer((None, 3, 128, 128), input_var)
-network = lasagne.layers.Conv2DLayer(network, 64, (8, 8),
+# 1st
+network = lasagne.layers.Conv2DLayer(network, 64, (8, 8), stride=2,
                                      nonlinearity=leaky_rectify)
-network = lasagne.layers.Conv2DLayer(network, 32, (8, 8),
+network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
+# 2nd
+network = lasagne.layers.Conv2DLayer(network, 96, (5, 5), stride=1, pad=2,
                                      nonlinearity=leaky_rectify)
-network = lasagne.layers.Pool2DLayer(network, (4, 4), stride=4, mode='max')
+network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
+# 3rd
+network = lasagne.layers.Conv2DLayer(network, 128, (3, 3), stride=1, pad=1,
+                                     nonlinearity=leaky_rectify)
+network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
+# 4th
 network = lasagne.layers.DenseLayer(lasagne.layers.dropout(network, 0.5),
-                                    64, nonlinearity=leaky_rectify,
+                                    512, nonlinearity=leaky_rectify,
                                     W=lasagne.init.Orthogonal())
+# 5th
 network = lasagne.layers.DenseLayer(lasagne.layers.dropout(network, 0.5),
                                     cats, nonlinearity=softmax)
 
