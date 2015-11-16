@@ -47,20 +47,18 @@ network = lasagne.layers.Conv2DLayer(network, 64, (8, 8), stride=2,
                                      nonlinearity=leaky_rectify)
 network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
 # 2nd
-network = lasagne.layers.Conv2DLayer(network, 96, (5, 5), stride=1,
+network = lasagne.layers.Conv2DLayer(network, 96, (5, 5), stride=1, pad='same',
                                      nonlinearity=leaky_rectify)
 network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
 # 3rd
-network = lasagne.layers.Conv2DLayer(network, 128, (3, 3), stride=1,
+network = lasagne.layers.Conv2DLayer(network, 128, (3, 3), stride=1, pad='same',
                                      nonlinearity=leaky_rectify)
 network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
 # 4th
-network = lasagne.layers.DenseLayer(lasagne.layers.dropout(network, 0.5),
-                                    512, nonlinearity=leaky_rectify,
-                                    W=lasagne.init.Orthogonal())
+network = lasagne.layers.DenseLayer(network, 512, nonlinearity=leaky_rectify)
+network = lasagne.layers.DropoutLayer(network)
 # 5th
-network = lasagne.layers.DenseLayer(lasagne.layers.dropout(network, 0.5),
-                                    cats, nonlinearity=softmax)
+network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
 # create loss function
 prediction = lasagne.layers.get_output(network)
