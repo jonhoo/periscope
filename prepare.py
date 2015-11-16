@@ -30,6 +30,9 @@ def dir2nd(directory, into, ignore_limit=False):
     if not ignore_limit and args.limit != 0 and args.limit < N:
         N = args.limit
 
+    remap = numpy.arange(N)
+    numpy.random.shuffle(remap)
+
     i = 0
     dirs_left = limit_dirs
     p = ProgressBar(max_value = N, redirect_stdout=True).start()
@@ -40,7 +43,7 @@ def dir2nd(directory, into, ignore_limit=False):
 
         imgs = 0
         for img in files:
-            images[i] = numpy.transpose(scipy.ndimage.imread(os.path.join(root, img)), [2, 0, 1]) / 255.0
+            images[remap[i]] = numpy.transpose(scipy.ndimage.imread(os.path.join(root, img)), [2, 0, 1]) / 255.0
 
             i += 1
             p.update(i)
@@ -54,7 +57,7 @@ def dir2nd(directory, into, ignore_limit=False):
     p.finish()
 
     del images
-    return N
+    return (N, remap)
 
 section("Dataset preparation")
 
@@ -66,7 +69,7 @@ section("Dataset preparation")
 
 task("Preparing training dataset")
 subtask("Extracting training images...")
-N = dir2nd(os.path.join(args.images, "train"), os.path.join(args.outdir, "train.images.db"))
+N, remap = dir2nd(os.path.join(args.images, "train"), os.path.join(args.outdir, "train.images.db"))
 
 i = 0
 categories = {}
@@ -86,7 +89,7 @@ for root, dirs, files in os.walk(os.path.join(args.images, "train"), followlinks
             print("found category {}, assigned id {}".format(category, label))
             categories[category] = label
 
-        labels[i] = categories[category]
+        labels[remap[i]] = categories[category]
 
         i += 1
         p.update(i)
