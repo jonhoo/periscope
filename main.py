@@ -47,11 +47,11 @@ network = lasagne.layers.Conv2DLayer(network, 64, (8, 8), stride=2,
                                      nonlinearity=leaky_rectify)
 network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
 # 2nd
-network = lasagne.layers.Conv2DLayer(network, 96, (5, 5), stride=1, pad=2,
+network = lasagne.layers.Conv2DLayer(network, 96, (5, 5), stride=1,
                                      nonlinearity=leaky_rectify)
 network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
 # 3rd
-network = lasagne.layers.Conv2DLayer(network, 128, (3, 3), stride=1, pad=1,
+network = lasagne.layers.Conv2DLayer(network, 128, (3, 3), stride=1,
                                      nonlinearity=leaky_rectify)
 network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
 # 4th
