@@ -34,6 +34,7 @@ section("Setup")
 task("Loading data")
 y_train = numpy.memmap(os.path.join(args.tagged, "train.labels.db"), dtype=numpy.int32, mode='r')
 X_train = numpy.memmap(os.path.join(args.tagged, "train.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_train), 3, 128, 128))
+cats = numpy.max(y_train)+1
 
 # use X% of data for validation, and X% for testing
 reserved = int(args.reserve * len(y_train) / 100.0)
@@ -57,7 +58,7 @@ network = lasagne.layers.DenseLayer(lasagne.layers.dropout(network, 0.5),
                                     64, nonlinearity=leaky_rectify,
                                     W=lasagne.init.Orthogonal())
 network = lasagne.layers.DenseLayer(lasagne.layers.dropout(network, 0.5),
-                                    5, nonlinearity=softmax)
+                                    cats, nonlinearity=softmax)
 
 # create loss function
 prediction = lasagne.layers.get_output(network)
