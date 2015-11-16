@@ -16,7 +16,7 @@ parser.add_argument('-l', '--limit', type=int, help='limit number of images to s
 args = parser.parse_args()
 
 # Optionally limit length of training data for slow machines
-MAX_PER_DIR=200
+MAX_PER_DIR=1000
 limit_dirs = -1
 if args.limit != 0:
     limit_dirs = numpy.ceil(args.limit / float(MAX_PER_DIR))
