@@ -16,7 +16,7 @@ args = parser.parse_args()
 # Optionally limit length of training data for slow machines
 MAX_PER_DIR=200
 limit_dirs = -1
-if args.limit > 0:
+if args.limit != 0:
     limit_dirs = numpy.ceil(args.limit / float(MAX_PER_DIR))
 
 def dir2nd(directory, into):
@@ -25,7 +25,7 @@ def dir2nd(directory, into):
         for img in files:
             N += 1
 
-    if args.limit < N:
+    if args.limit != 0 and args.limit < N:
         N = args.limit
 
     i = 0
