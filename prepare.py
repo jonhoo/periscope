@@ -58,11 +58,11 @@ def dir2nd(directory, into, ignore_limit=False):
 
 section("Dataset preparation")
 
-task("Extracting validation images")
-dir2nd(os.path.join(args.images, "val"), os.path.join(args.outdir, "val.images.db"), True)
+#task("Extracting validation images")
+#dir2nd(os.path.join(args.images, "val"), os.path.join(args.outdir, "val.images.db"), True)
 
-task("Extracting test images")
-dir2nd(os.path.join(args.images, "test"), os.path.join(args.outdir, "test.images.db"), True)
+#task("Extracting test images")
+#dir2nd(os.path.join(args.images, "test"), os.path.join(args.outdir, "test.images.db"), True)
 
 task("Preparing training dataset")
 subtask("Extracting training images...")

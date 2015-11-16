@@ -3,13 +3,13 @@ MP_DATA ?= ./mp-data
 
 RAW = $(MMAP_FILES)/full/train.labels.db \
       $(MMAP_FILES)/full/train.images.db \
-      $(MMAP_FILES)/full/val.images.db \
-      $(MMAP_FILES)/full/test.images.db \
+      #$(MMAP_FILES)/full/val.images.db \
+      #$(MMAP_FILES)/full/test.images.db \
 
 SRAW = $(MMAP_FILES)/small/train.labels.db \
        $(MMAP_FILES)/small/train.images.db \
-       $(MMAP_FILES)/small/val.images.db \
-       $(MMAP_FILES)/small/test.images.db \
+       #$(MMAP_FILES)/small/val.images.db \
+       #$(MMAP_FILES)/small/test.images.db \
 
 solve-small: $(SRAW) Makefile
 	./main.py -e5 -b30 -s5 $(MMAP_FILES)/small
