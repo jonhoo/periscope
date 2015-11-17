@@ -81,8 +81,8 @@ test_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
                                                         target_var)
 test_loss = test_loss.mean()
 # As a bonus, also create an expression for the classification accuracy:
-test_1_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var), dtype=theano.config.floatX)
-test_5_acc = T.mean(T.any(T.eq(T.argsort(test_prediction, axis=None), target_var.dimshuffle(0, 'x')), axis=None), dtype=theano.config.floatX)
+test_1_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, target_var))
+test_5_acc = T.mean(T.any(T.eq(T.argsort(test_prediction, axis=1)[:, -5:], target_var.dimshuffle(0, 'x')), axis=1), dtype=theano.config.floatX)
 
 # compile a second function computing the validation loss and accuracy:
 val_fn = theano.function([input_var, target_var], [test_loss, test_1_acc, test_5_acc])
