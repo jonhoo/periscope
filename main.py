@@ -14,12 +14,11 @@ import os.path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('tagged', help='path to directory containing prepared files')
-parser.add_argument('-e', '--epochs', type=int, help='number of epochs', default=100) # TODO: dictated by number of learning rates
 parser.add_argument('-r', '--reserve', type=float, help='percentage of samples to reserve for validation and testing', default=5)
-parser.add_argument('-l', '--learning', type=float, help='learning rate', default=0.01) # TODO: variable learning rate
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
-parser.add_argument('-s', '--stop', type=int, help='stop after this many batches each epoch', default=0)
+parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
+parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
@@ -36,6 +35,10 @@ y_train, y_val, y_test = y_train[:-2*reserved], y_train[-2*reserved:-reserved], 
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
+learning_rates = numpy.logspace(-2, -4, 60, dtype=theano.config.floatX)
+learning_rates_var = theano.shared(learning_rates)
+learning_rate = theano.shared(learning_rates[0] * (1-args.momentum)) # see https://lasagne.readthedocs.org/en/latest/modules/updates.html#lasagne.updates.nesterov_momentum
+epochi = T.iscalar('e')
 input_var = T.tensor4('X')
 target_var = T.ivector('y')
 
@@ -68,10 +71,11 @@ loss = loss.mean() + 1e-4 * lasagne.regularization.regularize_network_params(
 
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
-updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=args.learning, momentum=args.momentum)
+updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
+updates[learning_rate] = learning_rates_var[epochi]
 
 # compile training function that updates parameters and returns training loss
-train_fn = theano.function([input_var, target_var], loss, updates=updates)
+train_fn = theano.function([epochi, input_var, target_var], loss, updates=updates)
 
 # Create a loss expression for validation/testing. The crucial difference here
 # is that we do a deterministic forward pass through the network, disabling
@@ -101,7 +105,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 section("Training")
 # Finally, launch the training loop.
-for epoch in range(args.epochs):
+for epoch in range(len(learning_rates)):
     task("Starting training epoch {}".format(epoch))
     start_time = time.time()
 
@@ -111,10 +115,10 @@ for epoch in range(args.epochs):
     p = ProgressBar(max_value = train_batches).start()
     i = 1
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
-        train_err += train_fn(batch[0], batch[1])
+        train_err += train_fn(i-1, batch[0], batch[1])
         p.update(i)
         i = i+1
-        if args.stop != 0 and i > args.stop:
+        if args.batch_stop != 0 and i > args.batch_stop:
             break
 
     subtask("Doing forward pass on validation data (size: {})".format(len(X_val)))
@@ -140,6 +144,9 @@ for epoch in range(args.epochs):
         val_acc1 / val_batches * 100,
         val_acc5 / val_batches * 100
     ))
+
+    if args.epoch_stop != 0 and epoch+1 == args.epoch_stop:
+        break
 
 section("Evaluation")
 # After training, we compute and print the test error:
