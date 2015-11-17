@@ -6,6 +6,7 @@ import argparse
 import lasagne
 import theano
 import theano.tensor as T
+import pickle
 import numpy
 import time
 
@@ -19,6 +20,7 @@ parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
+parser.add_argument('-c', '--cache', type=argparse.FileType('ab+'), help='store/resume network state in/from this file', default=None)
 parser.add_argument('-p', '--plot', type=argparse.FileType('ab+'), help='plot network performance to this png file', default=None)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
@@ -159,9 +161,29 @@ def replot():
         fp.close()
         os.rename(fp.name, args.plot.name)
 
+start = 0
+if args.cache is not None:
+    try:
+        section("Restoring state")
+        args.cache.seek(0)
+        task("Loading parameters")
+        state = pickle.load(args.cache)
+        task("Loading epoch information")
+        epoch = pickle.load(args.cache)
+        training = pickle.load(args.cache)
+        validation = pickle.load(args.cache)
+        task("Restoring parameter values")
+        for p, v in zip(params, state):
+            p.set_value(v)
+        learning_rate.set_value(learning_rates[epoch] * (1-args.momentum))
+        subtask("Resuming at epoch {}".format(epoch+1))
+        start = epoch+1
+    except EOFError:
+        task("No model state stored; starting afresh")
+
 section("Training")
 # Finally, launch the training loop.
-for epoch in range(0, end):
+for epoch in range(start, end):
     replot()
 
     task("Starting training epoch {}".format(epoch))
@@ -198,6 +220,16 @@ for epoch in range(0, end):
     # record performance
     training.append(train_loss / train_batches)
     validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
+
+    # store model state
+    if args.cache is not None:
+        subtask("Storing trained parameters")
+        args.cache.seek(0)
+        args.cache.truncate()
+        pickle.dump([p.get_value() for p in params], args.cache)
+        pickle.dump(epoch, args.cache)
+        pickle.dump(training, args.cache)
+        pickle.dump(validation, args.cache)
 
     # Then we print the results for this epoch:
     subtask("Epoch results: {:.6f}/{:.6f}/{:.2f}%/{:.2f}% (tloss, vloss, v1acc, v5acc)".format(

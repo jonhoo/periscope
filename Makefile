@@ -12,10 +12,10 @@ SRAW = $(MMAP_FILES)/small/train.labels.db \
        #$(MMAP_FILES)/small/test.images.db \
 
 solve-small: $(SRAW) Makefile
-	./main.py -p plot.png -e5 -b30 -s5 $(MMAP_FILES)/small
+	./main.py -p plot.png -c network.mdl -e5 -b30 -s5 $(MMAP_FILES)/small
 
 solve: $(RAW) Makefile
-	./main.py -p plot-large.png $(MMAP_FILES)/full
+	./main.py -p plot-large.png -c network-large.mdl $(MMAP_FILES)/full
 
 $(SRAW): prepare.py Makefile
 	mkdir -p $(MMAP_FILES)/small
