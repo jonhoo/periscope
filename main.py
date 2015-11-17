@@ -81,11 +81,11 @@ test_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
                                                         target_var)
 test_loss = test_loss.mean()
 # As a bonus, also create an expression for the classification accuracy:
-test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
-                  dtype=theano.config.floatX)
+test_1_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var), dtype=theano.config.floatX)
+test_5_acc = T.mean(T.any(T.eq(T.argsort(test_prediction, axis=None), target_var.dimshuffle(0, 'x')), axis=None), dtype=theano.config.floatX)
 
 # compile a second function computing the validation loss and accuracy:
-val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
+val_fn = theano.function([input_var, target_var], [test_loss, test_1_acc, test_5_acc])
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     assert len(inputs) == len(targets)
@@ -120,40 +120,46 @@ for epoch in range(args.epochs):
     subtask("Doing forward pass on validation data (size: {})".format(len(X_val)))
     # Also do a validation data forward pass
     val_err = 0
-    val_acc = 0
+    val_acc1 = 0
+    val_acc5 = 0
     val_batches = len(range(0, len(X_val) - args.batchsize + 1, args.batchsize))
     p = ProgressBar(max_value = val_batches).start()
     i = 1
     for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        err, acc = val_fn(batch[0], batch[1])
+        err, acc1, acc5 = val_fn(batch[0], batch[1])
         val_err += err
-        val_acc += acc
+        val_acc1 += acc1
+        val_acc5 += acc5
         p.update(i)
         i = i+1
 
     # Then we print the results for this epoch:
-    subtask("Epoch results: {:.6f}/{:.6f}/{:.2f}% (tloss, vloss, vacc)".format(
+    subtask("Epoch results: {:.6f}/{:.6f}/{:.2f}%/{:.2f}% (tloss, vloss, v1acc, v5acc)".format(
         train_err / train_batches,
         val_err / val_batches,
-        val_acc / val_batches * 100
+        val_acc1 / val_batches * 100,
+        val_acc5 / val_batches * 100
     ))
 
 section("Evaluation")
 # After training, we compute and print the test error:
 task("Evaluating performance on test data set")
 test_err = 0
-test_acc = 0
+test_acc1 = 0
+test_acc5 = 0
 test_batches = len(range(0, len(X_test) - args.batchsize + 1, args.batchsize))
 p = ProgressBar(max_value = test_batches).start()
 i = 1
 for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
-    err, acc = val_fn(batch[0], batch[1])
+    err, acc1, acc5 = val_fn(batch[0], batch[1])
     test_err += err
-    test_acc += acc
+    test_acc1 += acc1
+    test_acc5 += acc5
     p.update(i)
     i = i+1
 
-print(colored(" ==> Final results: {:.6f} loss, {:.2f}% accuracy <== ".format(
+print(colored(" ==> Final results: {:.6f} loss, {:.2f}% top-1 accuracy, {:.2f}% top-5 accuracy <== ".format(
     test_err / test_batches,
-    test_acc / test_batches * 100
+    test_acc1 / test_batches * 100,
+    test_acc5 / test_batches * 100
 ), "green", attrs=["bold"]))
