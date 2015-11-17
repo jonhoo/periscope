@@ -19,6 +19,7 @@ parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
+parser.add_argument('-p', '--plot', type=argparse.FileType('ab+'), help='plot network performance to this png file', default=None)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
@@ -103,13 +104,66 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
 
+training = []
+validation = []
 end = len(learning_rates)
 if args.epoch_stop != 0:
     end = args.epoch_stop
 
+if args.plot is not None:
+    args.plot.close()
+
+def replot():
+    if args.plot is None:
+        return
+
+    global training
+    global validation
+    if len(validation) == 0:
+        return
+
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    sns.set(style="ticks", color_codes=True)
+
+    fig = plt.figure()
+    ax_loss = fig.add_subplot(1, 2, 1)
+    ax_err = fig.add_subplot(1, 2, 2)
+
+    # styles
+    ax_loss.grid(True)
+    ax_err.grid(True)
+    #ax_loss.set_yscale('log')
+    #ax_err.set_yscale('log')
+
+    # limits
+    global end
+    ax_loss.set_xlim(0, end)
+    ax_err.set_xlim(0, end)
+    ax_err.set_ylim(0, 1)
+    #ax_err.set_ylim(1e-5, 1)
+
+    # plot loss
+    ax_loss.plot([dp for dp in training])
+    ax_loss.plot([dp[0] for dp in validation])
+    ax_loss.legend(['Training loss', 'Validation loss'])
+
+    # plot error
+    ax_err.plot([1-dp[1] for dp in validation])
+    ax_err.plot([1-dp[2] for dp in validation])
+    ax_err.legend(['Exact match error', 'Top 5 match error'])
+
+    import tempfile
+    with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(args.plot.name)) as fp:
+        plt.savefig(fp, format='png')
+        fp.close()
+        os.rename(fp.name, args.plot.name)
+
 section("Training")
 # Finally, launch the training loop.
-for epoch in range(start, end):
+for epoch in range(0, end):
+    replot()
+
     task("Starting training epoch {}".format(epoch))
     start_time = time.time()
 
@@ -141,14 +195,19 @@ for epoch in range(start, end):
         p.update(i)
         i = i+1
 
+    # record performance
+    training.append(train_err / train_batches)
+    validation.append((val_err/val_batches, acc1/val_batches, acc5/val_batches))
+
     # Then we print the results for this epoch:
     subtask("Epoch results: {:.6f}/{:.6f}/{:.2f}%/{:.2f}% (tloss, vloss, v1acc, v5acc)".format(
-        train_err / train_batches,
-        val_err / val_batches,
-        val_acc1 / val_batches * 100,
-        val_acc5 / val_batches * 100
+        training[-1],
+        validation[-1][0],
+        validation[-1][1] * 100,
+        validation[-1][2] * 100,
     ))
 
+replot()
 
 section("Evaluation")
 # After training, we compute and print the test error:
