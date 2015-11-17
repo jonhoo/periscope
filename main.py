@@ -168,12 +168,12 @@ for epoch in range(0, end):
     start_time = time.time()
 
     # In each epoch, we do a pass over minibatches of the training data:
-    train_err = 0
+    train_loss = 0
     train_batches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
     p = ProgressBar(max_value = train_batches).start()
     i = 1
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
-        train_err += train_fn(i-1, batch[0], batch[1])
+        train_loss += train_fn(i-1, batch[0], batch[1])
         p.update(i)
         i = i+1
         if args.batch_stop != 0 and i > args.batch_stop:
@@ -181,23 +181,23 @@ for epoch in range(0, end):
 
     subtask("Doing forward pass on validation data (size: {})".format(len(X_val)))
     # Also do a validation data forward pass
-    val_err = 0
+    val_loss = 0
     val_acc1 = 0
     val_acc5 = 0
     val_batches = len(range(0, len(X_val) - args.batchsize + 1, args.batchsize))
     p = ProgressBar(max_value = val_batches).start()
     i = 1
     for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        err, acc1, acc5 = val_fn(batch[0], batch[1])
-        val_err += err
+        loss, acc1, acc5 = val_fn(batch[0], batch[1])
+        val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
         p.update(i)
         i = i+1
 
     # record performance
-    training.append(train_err / train_batches)
-    validation.append((val_err/val_batches, acc1/val_batches, acc5/val_batches))
+    training.append(train_loss / train_batches)
+    validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
 
     # Then we print the results for this epoch:
     subtask("Epoch results: {:.6f}/{:.6f}/{:.2f}%/{:.2f}% (tloss, vloss, v1acc, v5acc)".format(
@@ -212,22 +212,22 @@ replot()
 section("Evaluation")
 # After training, we compute and print the test error:
 task("Evaluating performance on test data set")
-test_err = 0
+test_loss = 0
 test_acc1 = 0
 test_acc5 = 0
 test_batches = len(range(0, len(X_test) - args.batchsize + 1, args.batchsize))
 p = ProgressBar(max_value = test_batches).start()
 i = 1
 for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
-    err, acc1, acc5 = val_fn(batch[0], batch[1])
-    test_err += err
+    loss, acc1, acc5 = val_fn(batch[0], batch[1])
+    test_loss += loss
     test_acc1 += acc1
     test_acc5 += acc5
     p.update(i)
     i = i+1
 
 print(colored(" ==> Final results: {:.6f} loss, {:.2f}% top-1 accuracy, {:.2f}% top-5 accuracy <== ".format(
-    test_err / test_batches,
+    test_loss / test_batches,
     test_acc1 / test_batches * 100,
     test_acc5 / test_batches * 100
 ), "green", attrs=["bold"]))
