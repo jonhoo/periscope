@@ -103,9 +103,13 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
 
+end = len(learning_rates)
+if args.epoch_stop != 0:
+    end = args.epoch_stop
+
 section("Training")
 # Finally, launch the training loop.
-for epoch in range(len(learning_rates)):
+for epoch in range(start, end):
     task("Starting training epoch {}".format(epoch))
     start_time = time.time()
 
@@ -145,8 +149,6 @@ for epoch in range(len(learning_rates)):
         val_acc5 / val_batches * 100
     ))
 
-    if args.epoch_stop != 0 and epoch+1 == args.epoch_stop:
-        break
 
 section("Evaluation")
 # After training, we compute and print the test error:
