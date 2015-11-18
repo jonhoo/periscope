@@ -148,16 +148,16 @@ def replot():
     #ax_err.set_ylim(1e-5, 1)
 
     # plot loss
-    ax_loss.plot([dp[0] for dp in training], 'b')
-    ax_loss.plot([dp[0] for dp in validation], 'r--')
+    ax_loss.plot(range(1, end+1), [dp[0] for dp in training], 'b')
+    ax_loss.plot(range(1, end+1), [dp[0] for dp in validation], 'r--')
     ax_loss.legend(['Training loss', 'Validation loss'])
     ax_loss.set_title('Model loss')
 
     # plot error
-    ax_err.plot([1-dp[1] for dp in training], 'b')
-    ax_err.plot([1-dp[2] for dp in training], 'r')
-    ax_err.plot([1-dp[1] for dp in validation], 'y--')
-    ax_err.plot([1-dp[2] for dp in validation], 'm--')
+    ax_err.plot(range(1, end+1), [1-dp[1] for dp in training], 'b')
+    ax_err.plot(range(1, end+1), [1-dp[2] for dp in training], 'r')
+    ax_err.plot(range(1, end+1), [1-dp[1] for dp in validation], 'y--')
+    ax_err.plot(range(1, end+1), [1-dp[2] for dp in validation], 'm--')
     ax_err.legend(['Training exact', 'Training top 5', 'Validation exact', 'Validation top 5'])
     ax_err.set_title('Match error')
 
