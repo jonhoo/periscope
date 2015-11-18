@@ -146,14 +146,18 @@ def replot():
     #ax_err.set_ylim(1e-5, 1)
 
     # plot loss
-    ax_loss.plot([dp for dp in training])
-    ax_loss.plot([dp[0] for dp in validation])
+    ax_loss.plot([dp[0] for dp in training], 'b')
+    ax_loss.plot([dp[0] for dp in validation], 'r--')
     ax_loss.legend(['Training loss', 'Validation loss'])
+    ax_loss.set_title('Model loss')
 
     # plot error
-    ax_err.plot([1-dp[1] for dp in validation])
-    ax_err.plot([1-dp[2] for dp in validation])
-    ax_err.legend(['Exact match error', 'Top 5 match error'])
+    ax_err.plot([1-dp[1] for dp in training], 'b')
+    ax_err.plot([1-dp[2] for dp in training], 'r')
+    ax_err.plot([1-dp[1] for dp in validation], 'y--')
+    ax_err.plot([1-dp[2] for dp in validation], 'm--')
+    ax_err.legend(['Training exact', 'Training top 5', 'Validation exact', 'Validation top 5'])
+    ax_err.set_title('Match error')
 
     import tempfile
     with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(args.plot.name)) as fp:
@@ -201,6 +205,18 @@ for epoch in range(start, end):
         if args.batch_stop != 0 and i > args.batch_stop:
             break
 
+    subtask("Doing forward pass on training data (size: {})".format(len(X_train)))
+    p = ProgressBar(max_value = train_batches).start()
+    i = 1
+    train_acc1 = 0
+    train_acc5 = 0
+    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
+        _, acc1, acc5 = val_fn(batch[0], batch[1])
+        p.update(i)
+        train_acc1 += acc1
+        train_acc5 += acc5
+        i = i+1
+
     subtask("Doing forward pass on validation data (size: {})".format(len(X_val)))
     # Also do a validation data forward pass
     val_loss = 0
@@ -218,7 +234,7 @@ for epoch in range(start, end):
         i = i+1
 
     # record performance
-    training.append(train_loss / train_batches)
+    training.append((train_loss/train_batches, train_acc1/train_batches, train_acc5/train_batches))
     validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
 
     # store model state
@@ -232,10 +248,8 @@ for epoch in range(start, end):
         pickle.dump(validation, args.cache)
 
     # Then we print the results for this epoch:
-    subtask("Epoch results: {:.6f}/{:.6f}/{:.2f}%/{:.2f}% (tloss, vloss, v1acc, v5acc)".format(
-        training[-1],
-        validation[-1][0],
-        validation[-1][1] * 100,
+    subtask("Epoch results: {:.2f}%/{:.2f}% (t5acc, v5acc)".format(
+        training[-1][2] * 100,
         validation[-1][2] * 100,
     ))
 
