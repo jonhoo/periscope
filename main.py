@@ -40,7 +40,7 @@ task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
 learning_rates = numpy.logspace(-2, -4, 60, dtype=theano.config.floatX)
 learning_rates_var = theano.shared(learning_rates)
-learning_rate = theano.shared(learning_rates[0] * (1-args.momentum)) # see https://lasagne.readthedocs.org/en/latest/modules/updates.html#lasagne.updates.nesterov_momentum
+learning_rate = theano.shared(learning_rates[0])
 epochi = T.iscalar('e')
 input_var = T.tensor4('X')
 target_var = T.ivector('y')
@@ -75,7 +75,7 @@ loss = loss.mean() + 1e-4 * lasagne.regularization.regularize_network_params(
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
 updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
-updates[learning_rate] = learning_rates_var[epochi] * (1-args.momentum)
+updates[learning_rate] = learning_rates_var[epochi]
 
 # compile training function that updates parameters and returns training loss
 train_fn = theano.function([epochi, input_var, target_var], loss, updates=updates)
@@ -182,7 +182,7 @@ if args.cache is not None:
         task("Restoring parameter values")
         for p, v in zip(params, state):
             p.set_value(v)
-        learning_rate.set_value(learning_rates[epoch] * (1-args.momentum))
+        learning_rate.set_value(learning_rates[epoch])
         subtask("Resuming at epoch {}".format(epoch+1))
         start = epoch+1
     except EOFError:
