@@ -203,6 +203,7 @@ for epoch in range(start, end):
         p.update(i)
         i = i+1
         if args.batch_stop != 0 and i > args.batch_stop:
+            p.update(train_batches)
             break
 
     subtask("Doing forward pass on training data (size: {})".format(len(X_train)))
