@@ -149,22 +149,22 @@ def replot():
 
     # plot loss
     xend = len(training)+1
-    ax_loss.plot(range(1, xend), [dp[0] for dp in training], 'b')
-    ax_loss.plot(range(1, xend), [dp[0] for dp in validation], 'r--')
+    ax_loss.plot(range(1, xend), [dp[0] for dp in training], 'b', marker='o', markersize=4)
+    ax_loss.plot(range(1, xend), [dp[0] for dp in validation], 'r--', marker='o', markersize=4)
     ax_loss.legend(['Training loss', 'Validation loss'])
     ax_loss.set_title('Model loss')
 
     # plot error
-    ax_err.plot(range(1, xend), [1-dp[1] for dp in training], 'b')
-    ax_err.plot(range(1, xend), [1-dp[2] for dp in training], 'r')
-    ax_err.plot(range(1, xend), [1-dp[1] for dp in validation], 'y--')
-    ax_err.plot(range(1, xend), [1-dp[2] for dp in validation], 'm--')
+    ax_err.plot(range(1, xend), [1-dp[1] for dp in training], 'b', marker='o', markersize=4)
+    ax_err.plot(range(1, xend), [1-dp[2] for dp in training], 'r', marker='o', markersize=4)
+    ax_err.plot(range(1, xend), [1-dp[1] for dp in validation], 'y--', marker='s', markersize=4)
+    ax_err.plot(range(1, xend), [1-dp[2] for dp in validation], 'm--', marker='s', markersize=4)
     ax_err.legend(['Training exact', 'Training top 5', 'Validation exact', 'Validation top 5'])
     ax_err.set_title('Match error')
 
     import tempfile
     with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(args.plot.name)) as fp:
-        plt.savefig(fp, format='png')
+        plt.savefig(fp, format='png', dpi=192)
         fp.close()
         os.rename(fp.name, args.plot.name)
 
