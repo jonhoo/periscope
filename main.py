@@ -209,7 +209,7 @@ for epoch in range(start, end):
             p.update(train_batches)
             break
 
-    train_test_batches = reserved/args.batchsize
+    train_test_batches = numpy.ceil(reserved/args.batchsize)
     subtask("Doing forward pass on training data (size: {})".format(reserved))
     p = ProgressBar(max_value = train_test_batches).start()
     i = 0
