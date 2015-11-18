@@ -209,17 +209,20 @@ for epoch in range(start, end):
             p.update(train_batches)
             break
 
-    subtask("Doing forward pass on training data (size: {})".format(len(X_train)))
-    p = ProgressBar(max_value = train_batches).start()
-    i = 1
+    train_test_batches = reserved/args.batchsize
+    subtask("Doing forward pass on training data (size: {})".format(reserved))
+    p = ProgressBar(max_value = train_test_batches).start()
+    i = 0
     train_acc1 = 0
     train_acc5 = 0
-    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
+    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
+        i = i+1
         _, acc1, acc5 = val_fn(batch[0], batch[1])
         p.update(i)
         train_acc1 += acc1
         train_acc5 += acc5
-        i = i+1
+        if i == train_test_batches:
+            break
 
     subtask("Doing forward pass on validation data (size: {})".format(len(X_val)))
     # Also do a validation data forward pass
@@ -238,7 +241,7 @@ for epoch in range(start, end):
         i = i+1
 
     # record performance
-    training.append((train_loss/train_batches, train_acc1/train_batches, train_acc5/train_batches))
+    training.append((train_loss/train_batches, train_acc1/train_test_batches, train_acc5/train_test_batches))
     validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
 
     # store model state
