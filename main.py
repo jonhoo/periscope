@@ -114,6 +114,8 @@ if args.epoch_stop != 0:
 
 if args.plot is not None:
     args.plot.close()
+    import matplotlib
+    matplotlib.use('Agg') # avoid the need for X
 
 def replot():
     if args.plot is None:
