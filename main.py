@@ -75,7 +75,7 @@ loss = loss.mean() + 1e-4 * lasagne.regularization.regularize_network_params(
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
 updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
-updates[learning_rate] = learning_rates_var[epochi]
+updates[learning_rate] = learning_rates_var[epochi] * (1-args.momentum)
 
 # compile training function that updates parameters and returns training loss
 train_fn = theano.function([epochi, input_var, target_var], loss, updates=updates)
