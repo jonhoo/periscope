@@ -65,12 +65,13 @@ network = lasagne.layers.DenseLayer(network, 512, nonlinearity=leaky_rectify)
 network = lasagne.layers.DropoutLayer(network)
 # 5th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
+# Output
+prediction = lasagne.layers.get_output(network)
 
 # create loss function
-prediction = lasagne.layers.get_output(network)
-loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-loss = loss.mean() + 1e-4 * lasagne.regularization.regularize_network_params(
-        network, lasagne.regularization.l2)
+from lasagne.regularization import regularize_network_params, l2, l1
+loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean()
+loss += regularize_network_params(network, l2) * 1e-4
 
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
