@@ -17,7 +17,7 @@ parser.add_argument('-c', '--categories', type=int, help='limit number of catego
 parser.add_argument('-s', '--samples', type=int, help='limit number of images to sample per category', default=0)
 args = parser.parse_args()
 
-def dir2nd(directory, ignore_limit=False):
+def dir2nd(directory, nsamples=0):
     global args
 
     # Count images
@@ -41,12 +41,12 @@ def dir2nd(directory, ignore_limit=False):
 
     # Optionally restrict number of files to parse
     limit = N
-    if not ignore_limit and args.categories != 0 and args.samples != 0:
-        limit = args.categories * args.samples
+    if args.categories != 0 and nsamples != 0:
+        limit = args.categories * nsamples
     elif args.categories != 0 and Nipc is not None:
         limit = args.categories * Nipc
-    elif not ignore_limit and args.samples != 0:
-        limit = Ncat * args.samples
+    elif nsamples != 0:
+        limit = Ncat * nsamples
     if limit < N:
         N = limit
 
@@ -81,11 +81,10 @@ def dir2nd(directory, ignore_limit=False):
             p.update(i)
 
             imgs += 1
-            # For the validation set, we ignore limits on the number of images
-            # per category to extract, as it's fairly small anyway. Note that
-            # there is no need for a check on args.samples != 0 here, because
-            # if args.samples == 0, this will never trigger.
-            if not ignore_limit and imgs == args.samples:
+            # Note that there is no need for a check on nsamples != 0 here,
+            # because if nsamples == 0, this will never trigger. Thus, for the
+            # test set, we extract all images.
+            if imgs == nsamples:
                 break
     p.finish()
 
@@ -96,10 +95,10 @@ def dir2nd(directory, ignore_limit=False):
 section("Dataset preparation")
 
 task("Extracting training images")
-dir2nd("train")
+dir2nd("train", nsamples=args.samples)
 
 task("Extracting validation images")
-dir2nd("val", True)
+dir2nd("val", nsamples=args.samples/10)
 
 task("Extracting test images")
-dir2nd("test", True)
+dir2nd("test", nsamples=0)
