@@ -15,26 +15,30 @@ import os.path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('tagged', help='path to directory containing prepared files')
-parser.add_argument('-r', '--reserve', type=float, help='percentage of samples to reserve for validation and testing', default=10)
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
 parser.add_argument('-c', '--cache', type=argparse.FileType('ab+'), help='store/resume network state in/from this file', default=None)
 parser.add_argument('-p', '--plot', type=argparse.FileType('ab+'), help='plot network performance to this png file', default=None)
+parser.add_argument('-l', '--labels', type=argparse.FileType('wb+'), help='record test set predictions to this file', default=None)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
 section("Setup")
 task("Loading data")
+subtask("Loading training set")
 y_train = numpy.memmap(os.path.join(args.tagged, "train.labels.db"), dtype=numpy.int32, mode='r')
 X_train = numpy.memmap(os.path.join(args.tagged, "train.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_train), 3, 128, 128))
 cats = numpy.max(y_train)+1
+subtask("Loading validation set")
+y_val = numpy.memmap(os.path.join(args.tagged, "val.labels.db"), dtype=numpy.int32, mode='r')
+X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_val), 3, 128, 128))
 
-# use X% of data for validation, and X% for testing
-reserved = int(args.reserve * len(y_train) / 100.0)
-X_train, X_val, X_test = X_train[:-2*reserved], X_train[-2*reserved:-reserved], X_train[-reserved:]
-y_train, y_val, y_test = y_train[:-2*reserved], y_train[-2*reserved:-reserved], y_train[-reserved:]
+if args.labels is not None:
+    subtask("Loading test set")
+    y_test = numpy.memmap(os.path.join(args.tagged, "test.labels.db"), dtype=numpy.int32, mode='r')
+    X_test = numpy.memmap(os.path.join(args.tagged, "test.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, 128, 128))
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
@@ -94,6 +98,10 @@ test_5_acc = T.mean(T.any(T.eq(T.argsort(test_prediction, axis=1)[:, -5:], targe
 
 # compile a second function computing the validation loss and accuracy:
 val_fn = theano.function([input_var, target_var], [test_loss, test_1_acc, test_5_acc])
+
+# and a final one for test output
+top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
+test_fn = theano.function([input_var], [top5_pred])
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     assert len(inputs) == len(targets)
@@ -197,9 +205,13 @@ for epoch in range(start, end):
     task("Starting training epoch {}".format(epoch))
     start_time = time.time()
 
+    # How much work will we have to do?
+    train_batches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
+    val_batches = len(range(0, len(X_val) - args.batchsize + 1, args.batchsize))
+    train_test_batches = val_batches
+
     # In each epoch, we do a pass over minibatches of the training data:
     train_loss = 0
-    train_batches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
     p = ProgressBar(max_value = train_batches).start()
     i = 1
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
@@ -210,8 +222,8 @@ for epoch in range(start, end):
             p.update(train_batches)
             break
 
-    train_test_batches = numpy.ceil(reserved/args.batchsize)
-    subtask("Doing forward pass on training data (size: {})".format(reserved))
+    # Only do forward pass on a subset of the training data
+    subtask("Doing forward pass on training data (size: {})".format(len(X_val)))
     p = ProgressBar(max_value = train_test_batches).start()
     i = 0
     train_acc1 = 0
@@ -230,7 +242,6 @@ for epoch in range(start, end):
     val_loss = 0
     val_acc1 = 0
     val_acc5 = 0
-    val_batches = len(range(0, len(X_val) - args.batchsize + 1, args.batchsize))
     p = ProgressBar(max_value = val_batches).start()
     i = 1
     for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
@@ -263,25 +274,18 @@ for epoch in range(start, end):
 
 replot()
 
-section("Evaluation")
-# After training, we compute and print the test error:
-task("Evaluating performance on test data set")
-test_loss = 0
-test_acc1 = 0
-test_acc5 = 0
-test_batches = len(range(0, len(X_test) - args.batchsize + 1, args.batchsize))
-p = ProgressBar(max_value = test_batches).start()
-i = 1
-for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
-    loss, acc1, acc5 = val_fn(batch[0], batch[1])
-    test_loss += loss
-    test_acc1 += acc1
-    test_acc5 += acc5
-    p.update(i)
-    i = i+1
+if args.labels is not None:
+    section("Evaluation")
+    task("Evaluating performance on test data set")
+    pred_out = numpy.memmap(args.labels, dtype=numpy.int32, shape=(len(X_test), 5))
 
-print(colored(" ==> Final results: {:.6f} loss, {:.2f}% top-1 accuracy, {:.2f}% top-5 accuracy <== ".format(
-    test_loss / test_batches,
-    test_acc1 / test_batches * 100,
-    test_acc5 / test_batches * 100
-), "green", attrs=["bold"]))
+    test_batches = len(range(0, len(X_test) - args.batchsize + 1, args.batchsize))
+    p = ProgressBar(max_value = test_batches).start()
+
+    i = 1
+    for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
+        s = (i-1)*args.batchsize
+        pred_out[s:s+args.batchsize, :] = test_fn(batch[0])[0]
+        p.update(i)
+        i = i+1
+    del pred_out
