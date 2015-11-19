@@ -18,11 +18,11 @@ solve-small: $(SRAW) Makefile
 solve: $(RAW) Makefile
 	./main.py -l test-labels.db -p plot-large.png -c network-large.mdl $(MMAP_FILES)/full
 
-$(SRAW): prepare.py Makefile
+$(SRAW): prepare.py
 	mkdir -p $(MMAP_FILES)/small
 	./prepare.py -c10 -s200 $(MP_DATA)/images/ $(DK_DATA) $(MMAP_FILES)/small
 
-$(RAW): prepare.py Makefile
+$(RAW): prepare.py
 	mkdir -p $(MMAP_FILES)/full
 	./prepare.py $(MP_DATA)/images/ $(DK_DATA) $(MMAP_FILES)/full
 
