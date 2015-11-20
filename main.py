@@ -13,18 +13,18 @@ import time
 import os
 import os.path
 
-import lasagne.layers.dnn
 from lasagne.nonlinearities import leaky_rectify, softmax
 
-# Force GPU implementations if a GPU is available.
-# Do not know why Theano is not selecting these impls
-# by default as advertised.
-if theano.sandbox.cuda.dnn.dnn_available():
-    Conv2DLayer = lasagne.layers.dnn.Conv2DDNNLayer
-    MaxPool2DLayer = lasagne.layers.dnn.MaxPool2DDNNLayer
-else:
-    Conv2DLayer = lasagne.layers.Conv2DLayer
-    MaxPool2DLayer = lasagne.layers.MaxPool2DLayer
+Conv2DLayer = lasagne.layers.Conv2DLayer
+MaxPool2DLayer = lasagne.layers.MaxPool2DLayer
+if theano.config.device.startswith("gpu"):
+    import lasagne.layers.dnn
+    # Force GPU implementations if a GPU is available.
+    # Do not know why Theano is not selecting these impls
+    # by default as advertised.
+    if theano.sandbox.cuda.dnn.dnn_available():
+        Conv2DLayer = lasagne.layers.dnn.Conv2DDNNLayer
+        MaxPool2DLayer = lasagne.layers.dnn.MaxPool2DDNNLayer
 
 parser = argparse.ArgumentParser()
 parser.add_argument('tagged', help='path to directory containing prepared files')
