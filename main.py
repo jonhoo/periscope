@@ -183,7 +183,8 @@ def replot():
 
     import tempfile
     with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(args.plot.name)) as fp:
-        plt.savefig(fp, format='png', dpi=192)
+        fig.savefig(fp, format='png', dpi=192)
+        plt.close(fig)
         fp.close()
         os.rename(fp.name, args.plot.name)
 
