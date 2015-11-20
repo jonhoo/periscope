@@ -16,6 +16,8 @@ setup(
         'numpy',
         'pillow',
         'progressbar2',
+        'matplotlib',
+        'seaborn',
         'scipy',
         'termcolor',
         'Theano >= 0.7.0'
