@@ -55,7 +55,7 @@ if args.labels is not None:
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
-learning_rates = numpy.logspace(-2, -4, 60, dtype=theano.config.floatX)
+learning_rates = numpy.logspace(-1.7, -4, 60, dtype=theano.config.floatX)
 learning_rates_var = theano.shared(learning_rates)
 learning_rate = theano.shared(learning_rates[0])
 epochi = T.iscalar('e')
@@ -85,7 +85,7 @@ prediction = lasagne.layers.get_output(network)
 # create loss function
 from lasagne.regularization import regularize_network_params, l2, l1
 loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean()
-loss += regularize_network_params(network, l2) * 1e-4
+loss += regularize_network_params(network, l2) * 1e-3
 
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
