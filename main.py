@@ -13,6 +13,19 @@ import time
 import os
 import os.path
 
+import lasagne.layers.dnn
+from lasagne.nonlinearities import leaky_rectify, softmax
+
+# Force GPU implementations if a GPU is available.
+# Do not know why Theano is not selecting these impls
+# by default as advertised.
+if theano.sandbox.cuda.dnn.dnn_available():
+    Conv2DLayer = lasagne.layers.dnn.Conv2DDNNLayer
+    MaxPool2DLayer = lasagne.layers.dnn.MaxPool2DDNNLayer
+else:
+    Conv2DLayer = lasagne.layers.Conv2DLayer
+    MaxPool2DLayer = lasagne.layers.MaxPool2DLayer
+
 parser = argparse.ArgumentParser()
 parser.add_argument('tagged', help='path to directory containing prepared files')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
@@ -50,25 +63,23 @@ input_var = T.tensor4('X')
 target_var = T.ivector('y')
 
 # create a small convolutional neural network
-from lasagne.nonlinearities import leaky_rectify, softmax
-network = lasagne.layers.InputLayer((None, 3, 128, 128), input_var)
+
+network = lasagne.layers.InputLayer((args.batchsize, 3, 128, 128), input_var)
 # 1st
-network = lasagne.layers.Conv2DLayer(network, 64, (8, 8), stride=2,
-                                     nonlinearity=leaky_rectify)
-network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
+network = Conv2DLayer(network, 64, (8, 8), stride=2)
+network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 2nd
-network = lasagne.layers.Conv2DLayer(network, 96, (5, 5), stride=1, pad='same',
-                                     nonlinearity=leaky_rectify)
-network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
+network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same')
+network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 3rd
-network = lasagne.layers.Conv2DLayer(network, 128, (3, 3), stride=1, pad='same',
-                                     nonlinearity=leaky_rectify)
-network = lasagne.layers.MaxPool2DLayer(network, (3, 3), stride=2)
+network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same')
+network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 4th
 network = lasagne.layers.DenseLayer(network, 512, nonlinearity=leaky_rectify)
 network = lasagne.layers.DropoutLayer(network)
 # 5th
-network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
+network = lasagne.layers.DenseLayer(network, 100, nonlinearity=softmax)
+
 # Output
 prediction = lasagne.layers.get_output(network)
 
@@ -215,7 +226,7 @@ for epoch in range(start, end):
     p = ProgressBar(max_value = train_batches).start()
     i = 1
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
-        train_loss += train_fn(i-1, batch[0], batch[1])
+        train_loss += train_fn(epoch, batch[0], batch[1])
         p.update(i)
         i = i+1
         if args.batch_stop != 0 and i > args.batch_stop:
