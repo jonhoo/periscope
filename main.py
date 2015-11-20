@@ -63,22 +63,21 @@ input_var = T.tensor4('X')
 target_var = T.ivector('y')
 
 # create a small convolutional neural network
-
-network = lasagne.layers.InputLayer((args.batchsize, 3, 128, 128), input_var)
+network = lasagne.layers.InputLayer((None, 3, 128, 128), input_var)
 # 1st
-network = Conv2DLayer(network, 64, (8, 8), stride=2)
+network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=leaky_rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 2nd
-network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same')
+network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same', nonlinearity=leaky_rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 3rd
-network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same')
+network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same', nonlinearity=leaky_rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 4th
 network = lasagne.layers.DenseLayer(network, 512, nonlinearity=leaky_rectify)
 network = lasagne.layers.DropoutLayer(network)
 # 5th
-network = lasagne.layers.DenseLayer(network, 100, nonlinearity=softmax)
+network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
 # Output
 prediction = lasagne.layers.get_output(network)
