@@ -222,7 +222,7 @@ for epoch in range(start, end):
 
     # In each epoch, we do a pass over minibatches of the training data:
     train_loss = 0
-    p = ProgressBar(max_value = train_batches).start()
+    p = progress(train_batches)
     i = 1
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         train_loss += train_fn(epoch, batch[0], batch[1])
@@ -234,7 +234,7 @@ for epoch in range(start, end):
 
     # Only do forward pass on a subset of the training data
     subtask("Doing forward pass on training data (size: {})".format(len(X_val)))
-    p = ProgressBar(max_value = train_test_batches).start()
+    p = progress(train_test_batches)
     i = 0
     train_acc1 = 0
     train_acc5 = 0
@@ -252,7 +252,7 @@ for epoch in range(start, end):
     val_loss = 0
     val_acc1 = 0
     val_acc5 = 0
-    p = ProgressBar(max_value = val_batches).start()
+    p = progress(val_batches)
     i = 1
     for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
         loss, acc1, acc5 = val_fn(batch[0], batch[1])
@@ -290,7 +290,7 @@ if args.labels is not None:
     pred_out = numpy.memmap(args.labels, dtype=numpy.int32, shape=(len(X_test), 5))
 
     test_batches = len(range(0, len(X_test) - args.batchsize + 1, args.batchsize))
-    p = ProgressBar(max_value = test_batches).start()
+    p = progress(test_batches)
 
     i = 1
     for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):

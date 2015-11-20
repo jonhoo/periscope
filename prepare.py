@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from progressbar import ProgressBar
 from pretty import *
 import scipy.ndimage
 import argparse
@@ -54,7 +53,7 @@ def dir2nd(directory, nsamples=0):
     numpy.random.shuffle(remap)
 
     i = 0
-    p = ProgressBar(max_value = N, redirect_stdout=True).start()
+    p = progress(N, redirect_stdout=True)
     imdb = numpy.memmap(os.path.join(args.outdir, directory) + '.images.db', dtype=numpy.float32, mode='w+', shape=(N, 3, 128, 128))
     lbdb = numpy.memmap(os.path.join(args.outdir, directory) + '.labels.db', dtype=numpy.int32, mode='w+', shape=(N, ))
     for root, dirs, files in os.walk(os.path.join(args.images, directory), followlinks=True):
