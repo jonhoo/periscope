@@ -25,3 +25,7 @@ python3 -m pip install --upgrade https://github.com/Theano/Theano/archive/master
 python3 -m pip install --upgrade https://github.com/Lasagne/Lasagne/archive/master.zip
 # pip install -e works for everything else.
 python3 -m pip install --upgrade -e .
+# update timestamp
+touch env/bin/python3
+# exit the venv
+deactivate
