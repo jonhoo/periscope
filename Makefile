@@ -17,7 +17,7 @@ IMDATA = $(MP_DATA)/images/train/y/yard/00001000.jpg
 
 all: $(IMDATA) solve
 
-$(PYTHON): env.sh
+$(PYTHON) env: env.sh
 	sh env.sh
 
 $(IMDATA):
