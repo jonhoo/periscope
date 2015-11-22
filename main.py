@@ -63,20 +63,30 @@ input_var = T.tensor4('X')
 target_var = T.ivector('y')
 
 # create a small convolutional neural network
-network = lasagne.layers.InputLayer((None, 3, 128, 128), input_var)
-# 1st
-network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=leaky_rectify)
+network = lasagne.layers.InputLayer((None, 3, 117, 117), input_var)
+# 1st. Data size 117 -> 111 -> 55
+network = Conv2DLayer(network, 64, (7, 7), stride=1, nonlinearity=leaky_rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 2nd
-network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same', nonlinearity=leaky_rectify)
+
+# 2nd. Data size 55 -> 27
+network = Conv2DLayer(network, 160, (5, 5), stride=1, pad='same', nonlinearity=leaky_rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 3rd
-network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same', nonlinearity=leaky_rectify)
+
+# 3rd.  Data size 27 -> 13
+network = Conv2DLayer(network, 192, (3, 3), stride=1, pad='same', nonlinearity=leaky_rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 4th
+
+# 4th.  Data size 11 -> 5
+network = Conv2DLayer(network, 384, (3, 3), stride=1, nonlinearity=leaky_rectify)
+network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+# 5th. Data size 5 -> 3
+network = Conv2DLayer(network, 512, (3, 3), stride=1, nonlinearity=leaky_rectify)
+
+# 6th. Data size 3 -> 1
 network = lasagne.layers.DenseLayer(network, 512, nonlinearity=leaky_rectify)
-network = lasagne.layers.DropoutLayer(network)
-# 5th
+
+# 7th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
 # Output
@@ -113,7 +123,32 @@ val_fn = theano.function([input_var, target_var], [test_loss, test_1_acc, test_5
 top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
 test_fn = theano.function([input_var], [top5_pred])
 
-def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
+# randomly crops and horizontally flips a batch of images.
+def random_cropflip(inputs, crop=11, flip=True):
+    batchsize, channels, width, height = inputs.shape
+    cropped = numpy.zeros([batchsize, channels, width - crop, height - crop]).astype(theano.config.floatX)
+    for i in range(batchsize):
+        x = numpy.random.randint(0, crop)
+        y = numpy.random.randint(0, crop)
+        f = numpy.random.randint(0, flip and 2 or 1)
+        if not f:
+          cropped[i] = inputs[i, :, x:x+width-crop, y:y+height-crop]
+        elif x > 0:
+          cropped[i] = inputs[i, :, x+width-crop-1:x-1:-1, y:y+height-crop]
+        else:
+          cropped[i] = inputs[i, :, width-crop-1::-1, y:y+height-crop]
+    return cropped
+
+# takes a center crop only, for testing.  TODO: take 10 crops and flips, and
+# average the results
+def center_crop(inputs, crop=11):
+    batchsize, channels, width, height = inputs.shape
+    x = numpy.floor_divide(crop, 2)
+    y = numpy.floor_divide(crop, 2)
+    return inputs[:, :, x:x+width-crop, y:y+height-crop]
+
+def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False,
+        crop=11, flip=True):
     assert len(inputs) == len(targets)
     if shuffle:
         indices = numpy.arange(len(inputs))
@@ -123,7 +158,10 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        yield inputs[excerpt], targets[excerpt]
+        if test:
+            yield center_crop(inputs[excerpt], crop), targets[excerpt]
+        else:
+            yield random_cropflip(inputs[excerpt], crop, flip), targets[excerpt]
 
 training = []
 validation = []
@@ -225,7 +263,7 @@ for epoch in range(start, end):
     train_loss = 0
     p = progress(train_batches)
     i = 1
-    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
+    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True, test=False):
         train_loss += train_fn(epoch, batch[0], batch[1])
         p.update(i)
         i = i+1
@@ -239,7 +277,7 @@ for epoch in range(start, end):
     i = 0
     train_acc1 = 0
     train_acc5 = 0
-    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
+    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True, test=True):
         i = i+1
         _, acc1, acc5 = val_fn(batch[0], batch[1])
         p.update(i)
@@ -255,7 +293,7 @@ for epoch in range(start, end):
     val_acc5 = 0
     p = progress(val_batches)
     i = 1
-    for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
+    for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False, test=True):
         loss, acc1, acc5 = val_fn(batch[0], batch[1])
         val_loss += loss
         val_acc1 += acc1
