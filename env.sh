@@ -40,7 +40,9 @@ fi
 git -C env/src/lasagne fetch --multiple origin f0k
 git -C env/src/lasagne checkout master
 git -C env/src/lasagne reset --hard origin/master
-git -C env/src/lasagne merge -s ours f0k/batchnorm -m "Patched batchnorm."
+# Merge pull 467.
+PULL467="https://patch-diff.githubusercontent.com/raw/Lasagne/Lasagne/pull/467.patch"
+curl $PULL467 | patch -Np 1 -d env/src/lasagne
 python3 -m pip install --upgrade env/src/lasagne
 
 # pip install -e works for everything else.
