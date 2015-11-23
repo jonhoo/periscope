@@ -28,7 +28,7 @@ if [ ! -d env/src/theano/.git ]; then
 fi
 
 # Update to latest; discard any local changes.
-git -C env/src/theano fetch --multiple origin
+git -C env/src/theano fetch origin
 git -C env/src/theano checkout master
 git -C env/src/theano reset --hard origin/master
 python3 -m pip install --upgrade env/src/theano
@@ -36,11 +36,10 @@ python3 -m pip install --upgrade env/src/theano
 # Also use Lasagne from the latest on github, but also patch in batchnorm.
 if [ ! -d env/src/lasagne/.git ]; then
   git clone https://github.com/Lasagne/Lasagne.git env/src/lasagne
-  git -C env/src/lasagne remote add f0k https://github.com/f0k/Lasagne.git
 fi
 
 # Get latest lasagne and apply batcnnorm patch into local master branch.
-git -C env/src/lasagne fetch --multiple origin f0k
+git -C env/src/lasagne fetch origin
 git -C env/src/lasagne checkout master
 git -C env/src/lasagne reset --hard origin/master
 # Merge pull 467.
