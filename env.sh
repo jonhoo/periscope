@@ -18,6 +18,9 @@ fi
 
 # numpy isn't listed as a dependency in scipy, so we need to do it by hand
 python3 -m pip wheel numpy
+python3 -m pip install numpy
+python3 -m pip wheel scipy
+python3 -m pip install scipy
 
 # Use Theano from the latest on github.
 if [ ! -d env/src/theano/.git ]; then
