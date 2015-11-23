@@ -63,7 +63,7 @@ input_var = T.tensor4('X')
 target_var = T.ivector('y')
 
 # create a small convolutional neural network
-network = lasagne.layers.InputLayer((None, 3, 128, 128), input_var)
+network = lasagne.layers.InputLayer((None, 3, 117, 117), input_var)
 # 1st
 network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=leaky_rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
