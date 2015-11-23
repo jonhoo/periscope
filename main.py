@@ -113,7 +113,32 @@ val_fn = theano.function([input_var, target_var], [test_loss, test_1_acc, test_5
 top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
 test_fn = theano.function([input_var], [top5_pred])
 
-def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
+# randomly crops and horizontally flips a batch of images.
+def random_cropflip(inputs, crop=11, flip=False):
+    batchsize, channels, height, width = inputs.shape
+    cropped = numpy.zeros([batchsize, channels, width - crop, height - crop]).astype(theano.config.floatX)
+    for i in range(batchsize):
+        x = numpy.random.randint(0, crop+1)
+        y = numpy.random.randint(0, crop+1)
+        f = numpy.random.randint(0, flip and 2 or 1)
+        if not f:
+          cropped[i] = inputs[i, :, y:y+height-crop, x:x+width-crop]
+        elif x > 0:
+          cropped[i] = inputs[i, :, y:y+height-crop, x+width-crop-1:x-1:-1]
+        else:
+          cropped[i] = inputs[i, :, y:y+height-crop, width-crop-1::-1]
+    return cropped
+
+# takes a center crop only, for testing.  TODO: take 10 crops and flips, and
+# average the results
+def center_crop(inputs, crop=11):
+    batchsize, channels, width, height = inputs.shape
+    x = numpy.floor_divide(crop, 2)
+    y = numpy.floor_divide(crop, 2)
+    return inputs[:, :, y:y+height-crop, x:x+width-crop]
+
+def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False,
+        crop=11, flip=False):
     assert len(inputs) == len(targets)
     if shuffle:
         indices = numpy.arange(len(inputs))
@@ -123,7 +148,10 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        yield inputs[excerpt], targets[excerpt]
+        if test:
+            yield center_crop(inputs[excerpt], crop), targets[excerpt]
+        else:
+            yield random_cropflip(inputs[excerpt], crop, flip), targets[excerpt]
 
 training = []
 validation = []
