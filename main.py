@@ -14,6 +14,7 @@ import os
 import os.path
 
 from lasagne.nonlinearities import leaky_rectify, softmax
+from lasagne.layers import DropoutLayer
 
 Conv2DLayer = lasagne.layers.Conv2DLayer
 MaxPool2DLayer = lasagne.layers.MaxPool2DLayer
@@ -74,17 +75,21 @@ network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 3rd.  Data size 27 -> 13
 network = Conv2DLayer(network, 192, (3, 3), stride=1, pad='same', nonlinearity=leaky_rectify)
+network = DropoutLayer(network);
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 4th.  Data size 11 -> 5
 network = Conv2DLayer(network, 384, (3, 3), stride=1, nonlinearity=leaky_rectify)
+network = DropoutLayer(network)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 5th. Data size 5 -> 3
 network = Conv2DLayer(network, 512, (3, 3), stride=1, nonlinearity=leaky_rectify)
+network = DropoutLayer(network)
 
 # 6th. Data size 3 -> 1
 network = lasagne.layers.DenseLayer(network, 512, nonlinearity=leaky_rectify)
+network = DropoutLayer(network)
 
 # 7th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
@@ -194,7 +199,7 @@ def replot():
     # styles
     ax_loss.grid(True)
     ax_err.grid(True)
-    ax_loss.set_yscale('log')
+    ax_loss.set_yscale('linear')
     #ax_err.set_yscale('log')
 
     # limits
@@ -316,7 +321,10 @@ for epoch in range(start, end):
         pickle.dump(validation, args.cache)
 
     # Then we print the results for this epoch:
-    subtask("Epoch results: {:.2f}%/{:.2f}% (t5acc, v5acc)".format(
+    subtask(("Epoch results: {:.2f}%/{:.2f}% (t1acc, v1acc)"
+             " {:.2f}%/{:.2f}% (t5acc, v5acc)").format(
+        training[-1][1] * 100,
+        validation[-1][1] * 100,
         training[-1][2] * 100,
         validation[-1][2] * 100,
     ))
