@@ -28,6 +28,7 @@ fi
 # Update to latest; discard any local changes.
 git -C env/src/theano fetch origin
 git -C env/src/theano checkout master
+git -C env/src/theano clean -d -f
 git -C env/src/theano reset --hard origin/master
 python3 -m pip install --upgrade env/src/theano
 
@@ -39,6 +40,7 @@ fi
 # Get latest lasagne and apply batcnnorm patch into local master branch.
 git -C env/src/lasagne fetch origin
 git -C env/src/lasagne checkout master
+git -C env/src/lasagne clean -d -f
 git -C env/src/lasagne reset --hard origin/master
 # Merge pull 467.
 PULL467="https://patch-diff.githubusercontent.com/raw/Lasagne/Lasagne/pull/467.patch"
