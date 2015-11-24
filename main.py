@@ -13,6 +13,7 @@ import time
 import os
 import os.path
 
+from lasagne.layers.normalization import LocalResponseNormalization2DLayer
 from lasagne.nonlinearities import leaky_rectify, softmax
 
 Conv2DLayer = lasagne.layers.Conv2DLayer
@@ -66,12 +67,15 @@ target_var = T.ivector('y')
 network = lasagne.layers.InputLayer((None, 3, 117, 117), input_var)
 # 1st
 network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=leaky_rectify)
+network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 2nd
 network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same', nonlinearity=leaky_rectify)
+network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 3rd
 network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same', nonlinearity=leaky_rectify)
+network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 4th
 network = lasagne.layers.DenseLayer(network, 512, nonlinearity=leaky_rectify)
