@@ -142,7 +142,7 @@ def center_crop(inputs, crop=11):
     return inputs[:, :, y:y+height-crop, x:x+width-crop]
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False,
-        crop=11, flip=False):
+        crop=11, flip=True):
     assert len(inputs) == len(targets)
     if shuffle:
         indices = numpy.arange(len(inputs))
