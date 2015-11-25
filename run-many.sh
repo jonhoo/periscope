@@ -1,10 +1,11 @@
 #!/bin/sh
 run() {
 	ex="$1"
+	echo "Running experiment $ex" > /dev/stderr
+	git --no-pager diff --color
 	make solve
 	mv network-large.mdl "network-${ex}.mdl"
-	mv plot.png "plot-${ex}.png"
-	git diff
+	mv plot-large.png "plot-${ex}.png"
 }
 
 shutdown="no"
@@ -18,7 +19,6 @@ ran=0
 for f in *.run.patch; do 
 	[ -e "$f" ] || exit 1
 
-	echo "Using $ex" > /dev/stderr
 	git reset --hard
 	if [ -s "$f" ]; then
 		git apply "$f"
