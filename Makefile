@@ -31,11 +31,13 @@ solve-small: $(PYTHON) $(SRAW) Makefile
 solve: $(PYTHON) $(RAW) Makefile
 	$(PYTHON) main.py -p plot-large.png -c network-large.mdl -x confusion-large.db $(MMAP_FILES)/full
 
-$(SRAW): $(PYTHON) $(IMDATA) prepare.py
+# these technically depend on $(PYTHON), but we don't want to add that
+# dependency, because then we have to re-prepare if we ever change env.sh
+$(SRAW): $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/small
 	$(PYTHON) prepare.py -c10 -s200 $(MP_DATA)/images/ $(DK_DATA) $(MMAP_FILES)/small
 
-$(RAW): $(PYTHON) $(IMDATA) prepare.py
+$(RAW): $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/full
 	$(PYTHON) prepare.py $(MP_DATA)/images/ $(DK_DATA) $(MMAP_FILES)/full
 
