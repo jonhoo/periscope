@@ -2,6 +2,14 @@
 # Set up the environment needed for our build.  Tries to keep
 # everything except pip3, python3, and virtualenv inside virutalenv.
 
+# For EC2, follow: http://markus.com/install-theano-on-aws/
+# Remember to pick .deb(network), not .deb(local)
+# Before you run env.sh, also install:
+# liblapack-dev
+# libfreetype6-dev
+# libpng12-dev
+# libjpeg-dev
+
 set -e
 command -v python3 >/dev/null 2>&1 || { \
   echo >&2 "python3 is required"; sudo apt-get install python3; }
