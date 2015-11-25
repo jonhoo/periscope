@@ -2,8 +2,8 @@
 run() {
 	ex="$1"
 	make solve
-	ln network-large.mdl "network-${ex}.mdl"
-	ln plot.png "plot-${ex}.png"
+	mv network-large.mdl "network-${ex}.mdl"
+	mv plot.png "plot-${ex}.png"
 	git diff
 }
 
