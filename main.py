@@ -14,6 +14,7 @@ import os
 import os.path
 
 from lasagne.layers.normalization import LocalResponseNormalization2DLayer
+from lasagne.layers import DropoutLayer
 from lasagne.nonlinearities import rectify, softmax
 
 Conv2DLayer = lasagne.layers.Conv2DLayer
@@ -65,22 +66,35 @@ target_var = T.ivector('y')
 
 # create a small convolutional neural network
 network = lasagne.layers.InputLayer((None, 3, 117, 117), input_var)
-# 1st
-network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=rectify)
+# 1st. Data size 117 -> 111 -> 55
+network = Conv2DLayer(network, 64, (7, 7), stride=1)
 network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 2nd
-network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same', nonlinearity=rectify)
+
+# 2nd. Data size 55 -> 27
+network = Conv2DLayer(network, 160, (5, 5), stride=1, pad='same')
 network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 3rd
-network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same', nonlinearity=rectify)
-network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
+
+# 3rd.  Data size 27 -> 13
+network = Conv2DLayer(network, 192, (3, 3), stride=1, pad='same')
+network = DropoutLayer(network);
 network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 4th
-network = lasagne.layers.DenseLayer(network, 512, nonlinearity=rectify)
-network = lasagne.layers.DropoutLayer(network)
-# 5th
+
+# 4th.  Data size 11 -> 5
+network = Conv2DLayer(network, 384, (3, 3), stride=1)
+network = DropoutLayer(network)
+network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+# 5th. Data size 5 -> 3
+network = Conv2DLayer(network, 512, (3, 3), stride=1)
+network = DropoutLayer(network)
+
+# 6th. Data size 3 -> 1
+network = lasagne.layers.DenseLayer(network, 512)
+network = DropoutLayer(network)
+
+# 7th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
 # Output
