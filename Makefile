@@ -29,7 +29,7 @@ solve-small: $(PYTHON) $(SRAW) Makefile
 	$(PYTHON) main.py -p plot.png -c network.mdl -e5 -b30 -s5 $(MMAP_FILES)/small
 
 solve: $(PYTHON) $(RAW) Makefile
-	$(PYTHON) main.py -l test-labels.db -p plot-large.png -c network-large.mdl $(MMAP_FILES)/full
+	$(PYTHON) main.py -p plot-large.png -c network-large.mdl $(MMAP_FILES)/full
 
 $(SRAW): $(PYTHON) $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/small
