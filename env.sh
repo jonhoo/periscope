@@ -15,14 +15,13 @@ command -v python3 >/dev/null 2>&1 || { \
   echo >&2 "python3 is required"; sudo apt-get install python3; }
 command -v pip3 >/dev/null 2>&1 || { \
   echo >&2 "pip3 is required"; sudo apt-get install python3-pip; }
-python3 -c "import virtualenv" >/dev/null 2>&1 || { \
-  echo >&2 "virtualenv is required"; sudo pip3 install virtualenv; }
 
-if [ ! -x env/bin/python3 ] || [ ! -f env/bin/activate ]; then
-  rm -rf env
-  python3 -m virtualenv env
-fi
+rm -rf env
+python3 -m venv env
 . env/bin/activate
+
+# install wheel in venv so we get wheel caching
+python3 -m pip install wheel
 
 # numpy isn't listed as a dependency in scipy, so we need to do it by hand
 python3 -m pip install numpy
@@ -57,8 +56,5 @@ python3 -m pip install --upgrade env/src/lasagne
 
 # pip install -e works for everything else.
 python3 -m pip install --upgrade -e .
-# update timestamp
-touch env/bin/python3
-touch env
 # exit the venv
 deactivate
