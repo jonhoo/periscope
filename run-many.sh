@@ -30,6 +30,6 @@ done
 if [ $ran -eq 1 ]; then
 	git reset --hard
 	if [ $shutdown = "yes" ]; then
-		sudo shutdown -h now
+		sudo poweroff
 	fi
 fi
