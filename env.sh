@@ -20,6 +20,9 @@ rm -rf env
 python3 -m venv env
 . env/bin/activate
 
+# upgrade pip inside venv since Ubuntu 14.04 uses a really old one
+python3 -m pip install --upgrade pip
+
 # install wheel in venv so we get wheel caching
 python3 -m pip install wheel
 
