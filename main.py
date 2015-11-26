@@ -73,7 +73,8 @@ center = numpy.zeros((2,), dtype=numpy.int32)
 center.fill(numpy.floor((imsz - cropsz)/2))
 
 # crop+flip
-prepared = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz:flip_var]
+cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
+prepared = cropped[:,:,:,::flip_var]
 
 # create a small convolutional neural network
 network = lasagne.layers.InputLayer((None, 3, cropsz, cropsz), prepared)
