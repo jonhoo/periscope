@@ -65,7 +65,7 @@ input_var = T.tensor4('X')
 target_var = T.ivector('y')
 
 # create a small convolutional neural network
-network = lasagne.layers.InputLayer((None, 3, 117, 117), input_var)
+network = lasagne.layers.InputLayer((args.batchsize, 3, 117, 117), input_var)
 # 1st. Data size 117 -> 111 -> 55
 network = Conv2DLayer(network, 64, (7, 7), stride=1)
 network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
@@ -201,7 +201,9 @@ def replot():
 
     # styles
     ax_loss.grid(True)
-    ax_err.grid(True)
+    ax_err.grid(b=True, which='major', color='b', linestyle='-', alpha=0.2)
+    ax_err.grid(b=True, which='minor', color='b', linestyle='-', alpha=0.1)
+    ax_err.minorticks_on()
     ax_loss.set_yscale('log')
     #ax_err.set_yscale('log')
 
@@ -246,6 +248,7 @@ if args.cache is not None:
         training = pickle.load(args.cache)
         validation = pickle.load(args.cache)
         task("Restoring parameter values")
+        assert len(params) == len(state)
         for p, v in zip(params, state):
             p.set_value(v)
         learning_rate.set_value(learning_rates[epoch])
