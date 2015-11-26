@@ -6,7 +6,6 @@ import argparse
 import lasagne
 import theano
 import theano.tensor as T
-from theano.ifelse import ifelse
 import pickle
 import numpy
 import time
@@ -74,8 +73,7 @@ center = numpy.zeros((2,), dtype=numpy.int32)
 center.fill(numpy.floor((imsz - cropsz)/2))
 
 # crop+flip
-cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
-prepared = ifelse(T.eq(flip_var, 1), cropped[:,:,:,::-1], cropped)
+prepared = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz:flip_var]
 
 # create a small convolutional neural network
 network = lasagne.layers.InputLayer((None, 3, cropsz, cropsz), prepared)
@@ -245,7 +243,7 @@ for epoch in range(start, end):
     i = 1
     frame = numpy.zeros((2,), dtype=numpy.int32)
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
-        flip = numpy.random.randint(0, 2)
+        flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)
         train_loss += train_fn(epoch, flip, frame, batch[0], batch[1])
@@ -263,7 +261,7 @@ for epoch in range(start, end):
     train_acc5 = 0
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         i = i+1
-        _, acc1, acc5 = val_fn(0, center, batch[0], batch[1])
+        _, acc1, acc5 = val_fn(1, center, batch[0], batch[1])
         p.update(i)
         train_acc1 += acc1
         train_acc5 += acc5
@@ -278,7 +276,7 @@ for epoch in range(start, end):
     p = progress(val_batches)
     i = 1
     for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        loss, acc1, acc5 = val_fn(0, center, batch[0], batch[1])
+        loss, acc1, acc5 = val_fn(1, center, batch[0], batch[1])
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
@@ -318,7 +316,7 @@ if args.labels is not None:
     i = 1
     for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
         s = (i-1)*args.batchsize
-        pred_out[s:s+args.batchsize, :] = test_fn(0, center, batch[0])[0]
+        pred_out[s:s+args.batchsize, :] = test_fn(1, center, batch[0])[0]
         p.update(i)
         i = i+1
     del pred_out
