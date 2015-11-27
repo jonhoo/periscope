@@ -38,6 +38,8 @@ git -C env/src/theano fetch origin
 git -C env/src/theano checkout master
 git -C env/src/theano clean -d -f
 git -C env/src/theano reset --hard origin/master
+# Revert bad theano commit see: https://github.com/Theano/Theano/issues/3692
+git -C env/src/theano revert --no-edit 79745f4334c257ec783c73bff5c38f4fd007ac9a
 python3 -m pip install --upgrade env/src/theano
 
 # Also use Lasagne from the latest on github, but also patch in batchnorm.
