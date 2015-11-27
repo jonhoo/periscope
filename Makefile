@@ -14,7 +14,7 @@ SRAW = $(MMAP_FILES)/small/train.labels.db \
        #$(MMAP_FILES)/small/val.images.db \
        #$(MMAP_FILES)/small/test.images.db \
 
-IMTGZ = $(MP_DATA)/data.tar.gz
+IMTGZ = $(MMAP_FILES)/data.tar.gz
 IMDATA = $(MP_DATA)/images/train/y/yard/00001000.jpg
 
 all: $(IMDATA) solve
@@ -26,6 +26,7 @@ $(VENV) env: env.sh
 $(IMTGZ):
 	mkdir -p $(MP_DATA)
 	curl "http://6.869.csail.mit.edu/fa15/challenge/data.tar.gz" -o $@
+	touch -d '2015-11-01' $@ # avoid rebuilds
 
 .PRECIOUS: $(IMTGZ)
 
