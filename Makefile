@@ -26,7 +26,7 @@ $(VENV) env: env.sh
 $(IMTGZ):
 	mkdir -p $(MP_DATA)
 	curl "http://6.869.csail.mit.edu/fa15/challenge/data.tar.gz" -o $@
-	touch -d '2015-11-01' $@ # avoid rebuilds
+	touch -d '2015-09-01' $@ # avoid rebuilds
 
 .PRECIOUS: $(IMTGZ)
 
