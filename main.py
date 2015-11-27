@@ -41,20 +41,23 @@ parser.add_argument('-x', '--confusion', type=argparse.FileType('wb+'), help='wr
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
+imsz = 128
+cropsz = 117
+
 section("Setup")
 task("Loading data")
 subtask("Loading training set")
 y_train = numpy.memmap(os.path.join(args.tagged, "train.labels.db"), dtype=numpy.int32, mode='r')
-X_train = numpy.memmap(os.path.join(args.tagged, "train.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_train), 3, 128, 128))
+X_train = numpy.memmap(os.path.join(args.tagged, "train.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_train), 3, imsz, imsz))
 cats = numpy.max(y_train)+1
 subtask("Loading validation set")
 y_val = numpy.memmap(os.path.join(args.tagged, "val.labels.db"), dtype=numpy.int32, mode='r')
-X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_val), 3, 128, 128))
+X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_val), 3, imsz, imsz))
 
 if args.labels is not None:
     subtask("Loading test set")
     y_test = numpy.memmap(os.path.join(args.tagged, "test.labels.db"), dtype=numpy.int32, mode='r')
-    X_test = numpy.memmap(os.path.join(args.tagged, "test.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, 128, 128))
+    X_test = numpy.memmap(os.path.join(args.tagged, "test.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
@@ -65,8 +68,18 @@ epochi = T.iscalar('e')
 input_var = T.tensor4('X')
 target_var = T.ivector('y')
 
+# parameters
+flip_var = T.iscalar('f')
+crop_var = T.ivector('c') # ycrop, xcrop
+center = numpy.zeros((2,), dtype=numpy.int32)
+center.fill(numpy.floor((imsz - cropsz)/2))
+
+# crop+flip
+cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
+prepared = cropped[:,:,:,::flip_var]
+
 # create a small convolutional neural network
-network = lasagne.layers.InputLayer((args.batchsize, 3, 117, 117), input_var)
+network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), prepared)
 # 1st. Data size 117 -> 111 -> 55
 network = Conv2DLayer(network, 64, (7, 7), stride=1)
 network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
@@ -112,7 +125,7 @@ updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning
 updates[learning_rate] = learning_rates_var[epochi]
 
 # compile training function that updates parameters and returns training loss
-train_fn = theano.function([epochi, input_var, target_var], loss, updates=updates)
+train_fn = theano.function([epochi, flip_var, crop_var, input_var, target_var], loss, updates=updates)
 
 # Create a loss expression for validation/testing. The crucial difference here
 # is that we do a deterministic forward pass through the network, disabling
@@ -126,52 +139,23 @@ test_1_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, target_var, top_k=5))
 
 # compile a second function computing the validation loss and accuracy:
-val_fn = theano.function([input_var, target_var], [test_loss, test_1_acc, test_5_acc])
+val_fn = theano.function([flip_var, crop_var, input_var, target_var], [test_loss, test_1_acc, test_5_acc])
 
 # a function for test output
 top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
-test_fn = theano.function([input_var], [top5_pred])
-debug_fn = theano.function([input_var], test_prediction)
+test_fn = theano.function([flip_var, crop_var, input_var], [top5_pred])
+debug_fn = theano.function([flip_var, crop_var, input_var], test_prediction)
 
-# randomly crops and horizontally flips a batch of images.
-def random_cropflip(inputs, crop=11, flip=False):
-    batchsize, channels, height, width = inputs.shape
-    cropped = numpy.zeros([batchsize, channels, width - crop, height - crop]).astype(theano.config.floatX)
-    for i in range(batchsize):
-        x = numpy.random.randint(0, crop+1)
-        y = numpy.random.randint(0, crop+1)
-        f = numpy.random.randint(0, flip and 2 or 1)
-        if not f:
-          cropped[i] = inputs[i, :, y:y+height-crop, x:x+width-crop]
-        elif x > 0:
-          cropped[i] = inputs[i, :, y:y+height-crop, x+width-crop-1:x-1:-1]
-        else:
-          cropped[i] = inputs[i, :, y:y+height-crop, width-crop-1::-1]
-    return cropped
-
-# takes a center crop only, for testing.  TODO: take 10 crops and flips, and
-# average the results
-def center_crop(inputs, crop=11):
-    batchsize, channels, width, height = inputs.shape
-    x = numpy.floor_divide(crop, 2)
-    y = numpy.floor_divide(crop, 2)
-    return inputs[:, :, y:y+height-crop, x:x+width-crop]
-
-def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False,
-        crop=11, flip=True):
+def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
-    if shuffle:
-        indices = numpy.arange(len(inputs))
-        numpy.random.shuffle(indices)
-    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+    end = len(inputs) - batchsize + 1
+    for start_idx in range(0, end, batchsize):
         if shuffle:
-            excerpt = indices[start_idx:start_idx + batchsize]
+            start = numpy.random.randint(0, end)
+            excerpt = slice(start, start + batchsize)
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        if test:
-            yield center_crop(inputs[excerpt], crop), targets[excerpt]
-        else:
-            yield random_cropflip(inputs[excerpt], crop, flip), targets[excerpt]
+        yield inputs[excerpt], targets[excerpt]
 
 training = []
 validation = []
@@ -276,8 +260,12 @@ for epoch in range(start, end):
     train_loss = 0
     p = progress(train_batches)
     i = 1
+    frame = numpy.zeros((2,), dtype=numpy.int32)
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
-        train_loss += train_fn(epoch, batch[0], batch[1])
+        flip = numpy.random.randint(0, 2) and 1 or -1
+        frame[0] = numpy.random.randint(0, imsz - cropsz)
+        frame[1] = numpy.random.randint(0, imsz - cropsz)
+        train_loss += train_fn(epoch, flip, frame, batch[0], batch[1])
         p.update(i)
         i = i+1
         if args.batch_stop != 0 and i > args.batch_stop:
@@ -292,7 +280,7 @@ for epoch in range(start, end):
     train_acc5 = 0
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         i = i+1
-        _, acc1, acc5 = val_fn(batch[0], batch[1])
+        _, acc1, acc5 = val_fn(1, center, batch[0], batch[1])
         p.update(i)
         train_acc1 += acc1
         train_acc5 += acc5
@@ -307,7 +295,7 @@ for epoch in range(start, end):
     p = progress(val_batches)
     i = 1
     for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        loss, acc1, acc5 = val_fn(batch[0], batch[1])
+        loss, acc1, acc5 = val_fn(1, center, batch[0], batch[1])
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
@@ -351,7 +339,7 @@ if args.labels is not None:
     i = 1
     for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
         s = (i-1)*args.batchsize
-        pred_out[s:s+args.batchsize, :] = test_fn(batch[0])[0]
+        pred_out[s:s+args.batchsize, :] = test_fn(1, center, batch[0])[0]
         p.update(i)
         i = i+1
     del pred_out
