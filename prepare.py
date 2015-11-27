@@ -56,6 +56,7 @@ def dir2nd(directory, nsamples=0):
     p = progress(N, redirect_stdout=True)
     imdb = numpy.memmap(os.path.join(args.outdir, directory) + '.images.db', dtype=numpy.float32, mode='w+', shape=(N, 3, 128, 128))
     lbdb = numpy.memmap(os.path.join(args.outdir, directory) + '.labels.db', dtype=numpy.int32, mode='w+', shape=(N, ))
+    nmlist = [None] * N
     for root, dirs, files in os.walk(os.path.join(args.images, directory), followlinks=True):
         imgs = 0
         for img in files:
@@ -75,6 +76,7 @@ def dir2nd(directory, nsamples=0):
 
             imdb[remap[i]] = numpy.transpose(scipy.ndimage.imread(impath), [2, 0, 1]) / 255.0
             lbdb[remap[i]] = cat is None and -1 or cat
+            nmlist[remap[i]] = rel
 
             i += 1
             p.update(i)
@@ -86,7 +88,8 @@ def dir2nd(directory, nsamples=0):
             if imgs == nsamples:
                 break
     p.finish()
-
+    with open(os.path.join(args.outdir, directory)+'.filenames.txt', 'w') as f:
+        f.writelines([name + '\n' for name in nmlist])
     del imdb
     del lbdb
     return (N, remap)
