@@ -132,12 +132,11 @@ test_fn = theano.function([flip_var, crop_var, input_var], [top5_pred])
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
-    if shuffle:
-        indices = numpy.arange(len(inputs))
-        numpy.random.shuffle(indices)
-    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+    end = len(inputs) - batchsize + 1
+    for start_idx in range(0, end, batchsize):
         if shuffle:
-            excerpt = indices[start_idx:start_idx + batchsize]
+            start = numpy.random.randint(0, end)
+            excerpt = slice(start, start + batchsize)
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
