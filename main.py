@@ -13,7 +13,7 @@ import time
 import os
 import os.path
 
-from lasagne.layers.normalization import LocalResponseNormalization2DLayer
+from lasagne.layers.normalization import BatchNormLayer
 from lasagne.nonlinearities import rectify, softmax
 
 Conv2DLayer = lasagne.layers.Conv2DLayer
@@ -59,7 +59,7 @@ if args.labels is not None:
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
-learning_rates = numpy.logspace(-1.7, -4, 60, dtype=theano.config.floatX)
+learning_rates = numpy.logspace(-1.5, -4, 30, dtype=theano.config.floatX)
 learning_rates_var = theano.shared(learning_rates)
 learning_rate = theano.shared(learning_rates[0])
 epochi = T.iscalar('e')
@@ -80,19 +80,18 @@ prepared = cropped[:,:,:,::flip_var]
 network = lasagne.layers.InputLayer((None, 3, cropsz, cropsz), prepared)
 # 1st
 network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=rectify)
-network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
+network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 2nd
-network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same', nonlinearity=rectify)
-network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
+network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same')
+network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 3rd
-network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same', nonlinearity=rectify)
-network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
+network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same')
+network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 4th
 network = lasagne.layers.DenseLayer(network, 512, nonlinearity=rectify)
-network = lasagne.layers.DropoutLayer(network)
 # 5th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
