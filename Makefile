@@ -37,7 +37,7 @@ solve-small: $(VENV) $(SRAW) Makefile
 	$(PYTHON) main.py -p plot.png -c network.mdl -e5 -b30 -s5 $(MMAP_FILES)/small
 
 solve: $(VENV) $(RAW) Makefile
-	$(PYTHON) main.py -p plot-large.png -c network-large.mdl -x confusion-large.db $(MMAP_FILES)/full
+	$(PYTHON) main.py -p plot-large.png -c network-large.mdl -e40 -x confusion-large.db $(MMAP_FILES)/full
 
 # these technically depend on $(PYTHON), but we don't want to add that
 # dependency, because then we have to re-prepare if we ever change env.sh

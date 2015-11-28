@@ -7,7 +7,7 @@ import os
 import os.path
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-x', '--confusion', type=argparse.FileType('r'), help='read confusion matrix from this file', default='confusion.db')
+parser.add_argument('-x', '--confusion', type=argparse.FileType('r'), help='read confusion matrix from this file', default='confusion-large.db')
 parser.add_argument('-t', '--tagged', help='load tagged data from this directory', default='tagged/full')
 parser.add_argument('-d', '--devkit', help='devkit directory containing categories.txt', default='mp-dev_kit')
 args = parser.parse_args()

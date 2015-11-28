@@ -336,9 +336,20 @@ if args.confusion is not None:
     p = progress(test_batches)
 
     i = 0
+    accn = {}
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
         s = i * args.batchsize
         pred_out[s:s+args.batchsize, :] = debug_fn(1, center, batch[0])
         i += 1
         p.update(i)
+        topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
+        for index in range(args.batchsize):
+            confusion = numpy.where(topindex[index] == batch[1][index])[0][0]
+            accn[confusion] = accn.get(confusion, 0) + 1
+        correct = 0
+    for index in range(10):
+        correct += accn.get(index, 0)
+        subtask("Training set acc@{}: {:.2f}%".format(
+                index + 1,
+                100.0 * correct / len(X_train)))
     del pred_out
