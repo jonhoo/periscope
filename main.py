@@ -174,7 +174,7 @@ def replot():
     # styles
     ax_loss.grid(True)
     ax_err.grid(True)
-    ax_loss.set_yscale('log')
+    #ax_loss.set_yscale('log')
     #ax_err.set_yscale('log')
 
     # limits
