@@ -13,18 +13,18 @@ parser.add_argument('-d', '--devkit', help='devkit directory containing categori
 args = parser.parse_args()
 
 categories = []
-for line in open('mp-dev_kit/categories.txt').readlines():
+for line in open(os.path.join(args.devkit, 'categories.txt')).readlines():
     assert int(line.strip().split()[1]) == len(categories)
     categories.append(re.sub('^/[a-z]/', '', line.strip().split()[0]))
 cats = len(categories)
 
 labels = {}
-for line in open('mp-dev_kit/train.txt').readlines():
+for line in open(os.path.join(args.devkit, 'train.txt')).readlines():
     name, label = line.strip().split()
     labels[name] = int(label)
 
 filenames = [line.strip() for line in
-        open('tagged/full/train.filenames.txt').readlines()]
+        open(os.path.join(args.tagged, 'train.filenames.txt')).readlines()]
 cases = len(filenames)
 
 predictions = numpy.memmap(args.confusion, dtype=numpy.float32, shape=(cases, cats), mode='r')
