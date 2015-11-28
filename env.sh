@@ -15,6 +15,8 @@ command -v python3 >/dev/null 2>&1 || { \
   echo >&2 "python3 is required"; sudo apt-get install python3; }
 command -v pip3 >/dev/null 2>&1 || { \
   echo >&2 "pip3 is required"; sudo apt-get install python3-pip; }
+python3 -c 'import ensurepip' >/dev/null 2>&1 || { \
+  echo >&2 "python3-venv is required"; sudo apt-get install python3.4-venv; }
 
 rm -rf env
 python3 -m venv env

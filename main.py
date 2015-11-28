@@ -36,6 +36,7 @@ parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many e
 parser.add_argument('-c', '--cache', type=argparse.FileType('ab+'), help='store/resume network state in/from this file', default=None)
 parser.add_argument('-p', '--plot', type=argparse.FileType('ab+'), help='plot network performance to this png file', default=None)
 parser.add_argument('-l', '--labels', type=argparse.FileType('wb+'), help='record test set predictions to this file', default=None)
+parser.add_argument('-x', '--confusion', type=argparse.FileType('wb+'), help='write confusion matrix to this file', default=None)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
@@ -125,18 +126,18 @@ test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 # compile a second function computing the validation loss and accuracy:
 val_fn = theano.function([flip_var, crop_var, input_var, target_var], [test_loss, test_1_acc, test_5_acc])
 
-# and a final one for test output
+# a function for test output
 top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
 test_fn = theano.function([flip_var, crop_var, input_var], [top5_pred])
+debug_fn = theano.function([flip_var, crop_var, input_var], test_prediction)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
-    if shuffle:
-        indices = numpy.arange(len(inputs))
-        numpy.random.shuffle(indices)
-    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+    end = len(inputs) - batchsize + 1
+    for start_idx in range(0, end, batchsize):
         if shuffle:
-            excerpt = indices[start_idx:start_idx + batchsize]
+            start = numpy.random.randint(0, end)
+            excerpt = slice(start, start + batchsize)
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
@@ -298,7 +299,11 @@ for epoch in range(start, end):
         pickle.dump(validation, args.cache)
 
     # Then we print the results for this epoch:
-    subtask("Epoch results: {:.2f}%/{:.2f}% (t5acc, v5acc)".format(
+    subtask(("Epoch results: " +
+        "{:.2f}%/{:.2f}% (t1acc, v1acc)" +
+        "{:.2f}%/{:.2f}% (t5acc, v5acc)").format(
+        training[-1][1] * 100,
+        validation[-1][1] * 100,
         training[-1][2] * 100,
         validation[-1][2] * 100,
     ))
@@ -319,4 +324,31 @@ if args.labels is not None:
         pred_out[s:s+args.batchsize, :] = test_fn(1, center, batch[0])[0]
         p.update(i)
         i = i+1
+    del pred_out
+
+if args.confusion is not None:
+    section("Debugging")
+    task("Evaluating confusion matrix on training data set")
+    pred_out = numpy.memmap(args.confusion, dtype=numpy.float32, shape=(len(X_train), cats), mode='w+')
+
+    test_batches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
+    p = progress(test_batches)
+
+    i = 0
+    accn = {}
+    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
+        s = i * args.batchsize
+        pred_out[s:s+args.batchsize, :] = debug_fn(1, center, batch[0])
+        i += 1
+        p.update(i)
+        topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
+        for index in range(args.batchsize):
+            confusion = numpy.where(topindex[index] == batch[1][index])[0][0]
+            accn[confusion] = accn.get(confusion, 0) + 1
+        correct = 0
+    for index in range(10):
+        correct += accn.get(index, 0)
+        subtask("Training set acc@{}: {:.2f}%".format(
+                index + 1,
+                100.0 * correct / len(X_train)))
     del pred_out
