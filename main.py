@@ -146,7 +146,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
 training = []
 validation = []
 end = len(learning_rates)
-if args.epoch_stop != 0:
+if args.epoch_stop != 0 and args.epoch_stop < end:
     end = args.epoch_stop
 
 if args.plot is not None:
