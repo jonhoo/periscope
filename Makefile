@@ -41,6 +41,13 @@ solve: $(VENV) $(RAW) Makefile
 		-p plot-large.png \
 		-c network-large.mdl \
 		-e40 \
+		$(MMAP_FILES)/full
+
+analyze: $(VENV) $(RAW) Makefile
+	$(PYTHON) main.py \
+		-p plot-large.png \
+		-c network-large.mdl \
+		-e40 \
 		-x confusion-large.db \
 		-r response-large.db \
 		$(MMAP_FILES)/full
