@@ -37,6 +37,7 @@ parser.add_argument('-c', '--cache', type=argparse.FileType('ab+'), help='store/
 parser.add_argument('-p', '--plot', type=argparse.FileType('ab+'), help='plot network performance to this png file', default=None)
 parser.add_argument('-l', '--labels', type=argparse.FileType('wb+'), help='record test set predictions to this file', default=None)
 parser.add_argument('-x', '--confusion', type=argparse.FileType('wb+'), help='write confusion matrix to this file', default=None)
+parser.add_argument('-r', '--response', type=argparse.FileType('wb+'), help='write target response patterns to this file', default=None)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
@@ -353,3 +354,33 @@ if args.confusion is not None:
                 index + 1,
                 100.0 * correct / len(X_train)))
     del pred_out
+
+# Divides the image into 8x8 overlapping squares of 23x23 pixels, each
+# offset 15 pixels from the previous
+def make_response_probe(image):
+    res = 16
+    pix = 27
+    st = 6
+    off = 5
+    result = numpy.tile(image, (res*res, 1, 1, 1))
+    for x in range(res):
+        for y in range(res):
+            for c in range(3):
+                v = numpy.average(
+                        result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix])
+                result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix] = (
+                        v * numpy.ones([pix, pix]))
+    return result
+
+if args.response is not None:
+    section("Visualization")
+    task("Evaluating response regions on training data set")
+    assert args.batchsize == 256
+    resp_out = numpy.memmap(args.response, dtype=numpy.float32, shape=(len(X_train), 256), mode='w+')
+    p = progress(len(X_train))
+    for index in range(len(X_train)):
+        probe = make_response_probe(X_train[index])
+        correct = y_train[index]
+        resp_out[index] = debug_fn(1, center, probe)[:,correct]
+        p.update(index + 1)
+    del resp_out
