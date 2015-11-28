@@ -53,6 +53,8 @@ def dir2nd(directory, nsamples=0):
         limit = Ncat * nsamples
     if limit < N:
         N = limit
+    if directory != "train":
+        nsamples = N
 
     remap = numpy.arange(N)
     numpy.random.RandomState(seed).shuffle(remap)
@@ -105,7 +107,7 @@ task("Extracting training images")
 dir2nd("train", nsamples=args.samples)
 
 task("Extracting validation images")
-dir2nd("val", nsamples=args.samples/10)
+dir2nd("val", nsamples=int(args.samples/10))
 
 task("Extracting test images")
 dir2nd("test", nsamples=0)
