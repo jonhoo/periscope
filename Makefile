@@ -43,14 +43,14 @@ solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		-p plot-large.png \
 		-c network-large.mdl \
-		-e40 \
+		-e30 \
 		$(MMAP_FILES)/full
 
 analyze response-large.db confusion-large.db: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		-p plot-large.png \
 		-c network-large.mdl \
-		-e40 \
+		-e30 \
 		-x confusion-large.db \
 		-r response-large.db \
 		$(MMAP_FILES)/full

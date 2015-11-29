@@ -385,8 +385,10 @@ def make_response_probe(image):
     for x in range(res):
         for y in range(res):
             for c in range(3):
-                v = numpy.average(
+                avg = numpy.average(
                         result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix])
+                noise = numpy.random(size=[pix, pix]) * 128 + 64
+                v = (noise + avg) / 2
                 result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix] = (
                         v * numpy.ones([pix, pix]))
     return result
