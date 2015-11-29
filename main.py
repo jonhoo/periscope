@@ -88,7 +88,7 @@ network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 2nd. Data size 55 -> 27
-network = Conv2DLayer(network, 160, (5, 5), stride=1, pad='same')
+network = Conv2DLayer(network, 112, (5, 5), stride=1, pad='same')
 network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
@@ -98,16 +98,17 @@ network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 4th.  Data size 11 -> 5
-network = Conv2DLayer(network, 384, (3, 3), stride=1)
+network = Conv2DLayer(network, 320, (3, 3), stride=1)
 network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 5th. Data size 5 -> 3
 network = Conv2DLayer(network, 512, (3, 3), stride=1)
-network = DropoutLayer(network)
+# network = DropoutLayer(network)
+network = BatchNormLayer(network, nonlinearity=rectify)
 
 # 6th. Data size 3 -> 1
-network = lasagne.layers.DenseLayer(network, 512)
+network = lasagne.layers.DenseLayer(network, 768)
 network = DropoutLayer(network)
 
 # 7th
@@ -125,6 +126,7 @@ loss += regularize_network_params(network, l2) * 1e-3
 params = lasagne.layers.get_all_params(network, trainable=True)
 updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
 updates[learning_rate] = learning_rates_var[epochi]
+subtask("parameter count {}".format(len(params)))
 
 # compile training function that updates parameters and returns training loss
 train_fn = theano.function([epochi, flip_var, crop_var, input_var, target_var], loss, updates=updates)
