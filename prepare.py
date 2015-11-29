@@ -16,6 +16,11 @@ parser.add_argument('-c', '--categories', type=int, help='limit number of catego
 parser.add_argument('-s', '--samples', type=int, help='limit number of images to sample per category', default=0)
 args = parser.parse_args()
 
+# Pick a constant random seed so that the shuffle is deterministic.
+# This way, we get the same data ordering on different instances,
+# simplifying the data we need for analysis.
+seed = 1
+
 def dir2nd(directory, nsamples=0):
     global args
 
@@ -48,9 +53,11 @@ def dir2nd(directory, nsamples=0):
         limit = Ncat * nsamples
     if limit < N:
         N = limit
+    if directory != "train":
+        nsamples = N
 
     remap = numpy.arange(N)
-    numpy.random.shuffle(remap)
+    numpy.random.RandomState(seed).shuffle(remap)
 
     i = 0
     p = progress(N, redirect_stdout=True)
@@ -100,7 +107,7 @@ task("Extracting training images")
 dir2nd("train", nsamples=args.samples)
 
 task("Extracting validation images")
-dir2nd("val", nsamples=args.samples/10)
+dir2nd("val", nsamples=int(args.samples/10))
 
 task("Extracting test images")
 dir2nd("test", nsamples=0)

@@ -13,8 +13,9 @@ import time
 import os
 import os.path
 
-from lasagne.layers.normalization import LocalResponseNormalization2DLayer
 from lasagne.layers import DropoutLayer
+from lasagne.layers.normalization import BatchNormLayer
+
 from lasagne.nonlinearities import rectify, softmax
 
 Conv2DLayer = lasagne.layers.Conv2DLayer
@@ -38,6 +39,7 @@ parser.add_argument('-c', '--cache', type=argparse.FileType('ab+'), help='store/
 parser.add_argument('-p', '--plot', type=argparse.FileType('ab+'), help='plot network performance to this png file', default=None)
 parser.add_argument('-l', '--labels', type=argparse.FileType('wb+'), help='record test set predictions to this file', default=None)
 parser.add_argument('-x', '--confusion', type=argparse.FileType('wb+'), help='write confusion matrix to this file', default=None)
+parser.add_argument('-r', '--response', type=argparse.FileType('wb+'), help='write target response patterns to this file', default=None)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
@@ -61,7 +63,7 @@ if args.labels is not None:
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
-learning_rates = numpy.logspace(-1.7, -4, 60, dtype=theano.config.floatX)
+learning_rates = numpy.logspace(-1.5, -4, 30, dtype=theano.config.floatX)
 learning_rates_var = theano.shared(learning_rates)
 learning_rate = theano.shared(learning_rates[0])
 epochi = T.iscalar('e')
@@ -82,22 +84,22 @@ prepared = cropped[:,:,:,::flip_var]
 network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), prepared)
 # 1st. Data size 117 -> 111 -> 55
 network = Conv2DLayer(network, 64, (7, 7), stride=1)
-network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
+network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 2nd. Data size 55 -> 27
 network = Conv2DLayer(network, 160, (5, 5), stride=1, pad='same')
-network = LocalResponseNormalization2DLayer(network, n=5, k=1, beta=0.75, alpha=0.0001/5)
+network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 3rd.  Data size 27 -> 13
 network = Conv2DLayer(network, 192, (3, 3), stride=1, pad='same')
-network = DropoutLayer(network);
+network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 4th.  Data size 11 -> 5
 network = Conv2DLayer(network, 384, (3, 3), stride=1)
-network = DropoutLayer(network)
+network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 5th. Data size 5 -> 3
@@ -160,7 +162,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
 training = []
 validation = []
 end = len(learning_rates)
-if args.epoch_stop != 0:
+if args.epoch_stop != 0 and args.epoch_stop < end:
     end = args.epoch_stop
 
 if args.plot is not None:
@@ -191,7 +193,8 @@ def replot():
     ax_err.grid(b=True, which='minor', color='b', linestyle='-', alpha=0.1)
     ax_err.minorticks_on()
     ax_loss.set_yscale('log')
-    #ax_err.set_yscale('log')
+    ax_err.grid(True)
+    #ax_loss.set_yscale('log')
 
     # limits
     global end
@@ -353,9 +356,50 @@ if args.confusion is not None:
     p = progress(test_batches)
 
     i = 0
+    accn = {}
     for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
         s = i * args.batchsize
         pred_out[s:s+args.batchsize, :] = debug_fn(1, center, batch[0])
         i += 1
         p.update(i)
+        topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
+        for index in range(args.batchsize):
+            confusion = numpy.where(topindex[index] == batch[1][index])[0][0]
+            accn[confusion] = accn.get(confusion, 0) + 1
+        correct = 0
+    for index in range(10):
+        correct += accn.get(index, 0)
+        subtask("Training set acc@{}: {:.2f}%".format(
+                index + 1,
+                100.0 * correct / len(X_train)))
     del pred_out
+
+# Divides the image into 8x8 overlapping squares of 23x23 pixels, each
+# offset 15 pixels from the previous
+def make_response_probe(image):
+    res = 16
+    pix = 27
+    st = 6
+    off = 5
+    result = numpy.tile(image, (res*res, 1, 1, 1))
+    for x in range(res):
+        for y in range(res):
+            for c in range(3):
+                v = numpy.average(
+                        result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix])
+                result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix] = (
+                        v * numpy.ones([pix, pix]))
+    return result
+
+if args.response is not None:
+    section("Visualization")
+    task("Evaluating response regions on training data set")
+    assert args.batchsize == 256
+    resp_out = numpy.memmap(args.response, dtype=numpy.float32, shape=(len(X_train), 256), mode='w+')
+    p = progress(len(X_train))
+    for index in range(len(X_train)):
+        probe = make_response_probe(X_train[index])
+        correct = y_train[index]
+        resp_out[index] = debug_fn(1, center, probe)[:,correct]
+        p.update(index + 1)
+    del resp_out
