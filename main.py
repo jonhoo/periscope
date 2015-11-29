@@ -93,7 +93,8 @@ network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same')
 network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 # 4th
-network = lasagne.layers.DenseLayer(network, 512, nonlinearity=rectify)
+network = lasagne.layers.DenseLayer(network, 512)
+network = BatchNormLayer(network, nonlinearity=rectify)
 # 5th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
