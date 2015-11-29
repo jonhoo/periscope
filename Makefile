@@ -1,6 +1,7 @@
 MMAP_FILES ?= ./tagged
 DK_DATA ?= ./mp-dev_kit
 MP_DATA ?= ./mp-data
+OUTPUT_FILES ?= ./out
 VENV = env/.built
 PYTHON = env/bin/python3
 
@@ -43,7 +44,7 @@ solve: $(VENV) $(RAW) Makefile
 		-e40 \
 		$(MMAP_FILES)/full
 
-analyze: $(VENV) $(RAW) Makefile
+analyze response-large.db confusion-large.db: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		-p plot-large.png \
 		-c network-large.mdl \
@@ -51,6 +52,14 @@ analyze: $(VENV) $(RAW) Makefile
 		-x confusion-large.db \
 		-r response-large.db \
 		$(MMAP_FILES)/full
+
+view: $(VENV) response-large.db Makefile
+	$(PYTHON) show_response.py \
+		-x confusion-large.db \
+		-r response-large.db \
+                -t $(MMAP_FILES)/full \
+                -d $(DK_DATA) \
+                -o $(OUTPUT_FILES)
 
 # these technically depend on $(PYTHON), but we don't want to add that
 # dependency, because then we have to re-prepare if we ever change env.sh
