@@ -50,7 +50,7 @@ analyze response-large.db confusion-large.db: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		-p plot-large.png \
 		-c network-large.mdl \
-		-e30 \
+		-e3 \
 		-x confusion-large.db \
 		-r response-large.db \
 		$(MMAP_FILES)/full
