@@ -226,7 +226,9 @@ if args.cache is not None:
         training = pickle.load(args.cache)
         validation = pickle.load(args.cache)
         task("Restoring parameter values")
-        for p, v in zip(saveparams if formatver >= 1 else params, state):
+        fileparams = saveparams if formatver >= 1 else params
+        assert len(fileparams) == len(state)
+        for p, v in zip(fileparams, state):
             p.set_value(v)
         learning_rate.set_value(learning_rates[min(epoch, len(learning_rates) - 1)])
         subtask("Resuming at epoch {}".format(epoch+1))
