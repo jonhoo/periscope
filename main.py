@@ -108,6 +108,7 @@ loss += regularize_network_params(network, l2) * 1e-3
 
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
+saveparams = lasagne.layers.get_all_params(network)
 updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
 updates[learning_rate] = learning_rates_var[epochi]
 
@@ -212,6 +213,12 @@ if args.cache is not None:
     try:
         section("Restoring state")
         args.cache.seek(0)
+        task("Loading format version")
+        formatver = pickle.load(args.cache)
+        if type(formatver) != int:
+            formatver = 0
+            args.cache.seek(0)
+        subtask("using format {}".format(formatver))
         task("Loading parameters")
         state = pickle.load(args.cache)
         task("Loading epoch information")
@@ -219,9 +226,9 @@ if args.cache is not None:
         training = pickle.load(args.cache)
         validation = pickle.load(args.cache)
         task("Restoring parameter values")
-        for p, v in zip(params, state):
+        for p, v in zip(saveparams if formatver >= 1 else params, state):
             p.set_value(v)
-        learning_rate.set_value(learning_rates[epoch])
+        learning_rate.set_value(learning_rates[min(epoch, len(learning_rates) - 1)])
         subtask("Resuming at epoch {}".format(epoch+1))
         start = epoch+1
     except EOFError:
@@ -295,15 +302,17 @@ for epoch in range(start, end):
         subtask("Storing trained parameters")
         args.cache.seek(0)
         args.cache.truncate()
-        pickle.dump([p.get_value() for p in params], args.cache)
+        formatver = 1
+        pickle.dump(formatver, args.cache)
+        pickle.dump([p.get_value() for p in saveparams], args.cache)
         pickle.dump(epoch, args.cache)
         pickle.dump(training, args.cache)
         pickle.dump(validation, args.cache)
 
     # Then we print the results for this epoch:
-    subtask(("Epoch results: " +
-        "{:.2f}%/{:.2f}% (t1acc, v1acc)" +
-        "{:.2f}%/{:.2f}% (t5acc, v5acc)").format(
+    subtask(("Epoch results:" +
+        " {:.2f}%/{:.2f}% (t1acc, v1acc)" +
+        " {:.2f}%/{:.2f}% (t5acc, v5acc)").format(
         training[-1][1] * 100,
         validation[-1][1] * 100,
         training[-1][2] * 100,
