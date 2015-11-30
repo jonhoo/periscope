@@ -37,30 +37,28 @@ $(IMDATA): $(IMTGZ)
 	tar mxvzf $< -C $(MP_DATA)
 
 solve-small: $(VENV) $(SRAW) Makefile
-	$(PYTHON) main.py -p plot.png -c network.mdl -e1 -b10 -s1 $(MMAP_FILES)/small
+	$(PYTHON) main.py -o exp-small -e1 -b10 -s1 $(MMAP_FILES)/small
 
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
-		-p plot-large.png \
-		-c network-large.mdl \
+		--outdir exp-large \
 		-e30 \
 		$(MMAP_FILES)/full
 
 analyze response-large.db confusion-large.db: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
-		-p plot-large.png \
-		-c network-large.mdl \
-		-e3 \
-		-x confusion-large.db \
-		-r response-large.db \
+		--outdir exp-large \
+		-e30 \
+		--confusion \
+                --response \
 		$(MMAP_FILES)/full
 
 view: $(VENV) response-large.db Makefile
 	$(PYTHON) view.py \
-		-r response-large.db \
+		-r exp-large/train-response.db \
                 -t $(MMAP_FILES)/full \
                 -d $(DK_DATA) \
-                -o $(OUTPUT_FILES)
+                -o exp-large/train-response
 
 # these technically depend on $(PYTHON), but we don't want to add that
 # dependency, because then we have to re-prepare if we ever change env.sh

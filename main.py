@@ -9,7 +9,7 @@ import theano.tensor as T
 import pickle
 import numpy
 import time
-
+import re
 import os
 import os.path
 
@@ -35,11 +35,14 @@ parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
-parser.add_argument('-c', '--cache', type=argparse.FileType('ab+'), help='store/resume network state in/from this file', default=None)
-parser.add_argument('-p', '--plot', type=argparse.FileType('ab+'), help='plot network performance to this png file', default=None)
+parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default='out')
 parser.add_argument('-l', '--labels', type=argparse.FileType('wb+'), help='record test set predictions to this file', default=None)
-parser.add_argument('-x', '--confusion', type=argparse.FileType('wb+'), help='write confusion matrix to this file', default=None)
-parser.add_argument('-r', '--response', type=argparse.FileType('wb+'), help='write target response patterns to this file', default=None)
+parser.add_argument('--no-plot', help='skip the plot', action='store_false')
+parser.set_defaults(plot=True)
+parser.add_argument('--confusion', help='compute confusion stats', action='store_true')
+parser.set_defaults(confusion=False)
+parser.add_argument('--response', help='compute response region', action='store_true')
+parser.set_defaults(response=False)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
 
@@ -108,8 +111,9 @@ network = Conv2DLayer(network, 324, (3, 3), stride=1)
 network = BatchNormLayer(network, nonlinearity=rectify)
 
 # 6th. Data size 3 -> 1
-network = lasagne.layers.DenseLayer(network, 486)
+network = lasagne.layers.DenseLayer(network, 512)
 network = DropoutLayer(network)
+# network = BatchNormLayer(network, nonlinearity=rectify)
 
 # 7th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
@@ -127,7 +131,10 @@ params = lasagne.layers.get_all_params(network, trainable=True)
 saveparams = lasagne.layers.get_all_params(network)
 updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
 updates[learning_rate] = learning_rates_var[epochi]
-subtask("parameter count {}".format(len(params)))
+subtask("parameter count {} ({} trainable) in {} arrays".format(
+        lasagne.layers.count_params(network),
+        lasagne.layers.count_params(network, trainable=True),
+        len(saveparams)))
 
 # compile training function that updates parameters and returns training loss
 train_fn = theano.function([epochi, flip_var, crop_var, input_var, target_var], loss, updates=updates)
@@ -168,15 +175,13 @@ end = len(learning_rates)
 if args.epoch_stop != 0 and args.epoch_stop < end:
     end = args.epoch_stop
 
-if args.plot is not None:
-    args.plot.close()
+if args.plot:
     import matplotlib
     matplotlib.use('Agg') # avoid the need for X
 
 def replot():
-    if args.plot is None:
+    if not args.plot:
         return
-
     global training
     global validation
     if len(validation) == 0:
@@ -209,52 +214,66 @@ def replot():
     # plot loss
     xend = len(training)+1
     ax_loss.plot(range(1, xend), [dp[0] for dp in training], 'b', marker='o', markersize=4)
+    xend = len(validation)+1
     ax_loss.plot(range(1, xend), [dp[0] for dp in validation], 'r--', marker='o', markersize=4)
     ax_loss.legend(['Training loss', 'Validation loss'])
     ax_loss.set_title('Model loss')
 
     # plot error
+    xend = len(training)+1
     ax_err.plot(range(1, xend), [1-dp[1] for dp in training], 'b', marker='o', markersize=4)
     ax_err.plot(range(1, xend), [1-dp[2] for dp in training], 'r', marker='o', markersize=4)
+    xend = len(validation)+1
     ax_err.plot(range(1, xend), [1-dp[1] for dp in validation], 'y--', marker='s', markersize=4)
     ax_err.plot(range(1, xend), [1-dp[2] for dp in validation], 'm--', marker='s', markersize=4)
     ax_err.legend(['Training exact', 'Training top 5', 'Validation exact', 'Validation top 5'])
     ax_err.set_title('Match error')
 
     import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(args.plot.name)) as fp:
+    with tempfile.NamedTemporaryFile(delete=False, dir=args.outdir) as fp:
         fig.savefig(fp, format='png', dpi=192)
         plt.close(fig)
         fp.close()
-        os.rename(fp.name, args.plot.name)
+        os.rename(fp.name, os.path.join(args.outdir, 'plot.png'))
 
 start = 0
-if args.cache is not None:
-    try:
-        section("Restoring state")
-        args.cache.seek(0)
+
+def latest_cachefile(outdir):
+    caches = [n for n in os.listdir(outdir) if re.match(r'^epoch-\d+\.mdl$', n)]
+    if len(caches) == 0:
+        return None
+    caches.sort(key=lambda x: -int(re.match(r'^epoch-(\d+)\.mdl$', x).group(1)))
+    return os.path.join(outdir, caches[0])
+
+os.makedirs(args.outdir, exist_ok=True)
+try:
+    resumefile = latest_cachefile(args.outdir)
+    with open(resumefile, 'rb') as lfile:
+        section("Restoring state from {}".format(resumefile))
+        lfile.seek(0)
         task("Loading format version")
-        formatver = pickle.load(args.cache)
+        formatver = pickle.load(lfile)
         if type(formatver) != int:
             formatver = 0
-            args.cache.seek(0)
+            lfile.seek(0)
         subtask("using format {}".format(formatver))
         task("Loading parameters")
-        state = pickle.load(args.cache)
+        state = pickle.load(lfile)
         task("Loading epoch information")
-        epoch = pickle.load(args.cache)
-        training = pickle.load(args.cache)
-        validation = pickle.load(args.cache)
+        epoch = pickle.load(lfile)
+        training = pickle.load(lfile)
+        validation = pickle.load(lfile)
         task("Restoring parameter values")
         fileparams = saveparams if formatver >= 1 else params
         assert len(fileparams) == len(state)
         for p, v in zip(fileparams, state):
             p.set_value(v)
-        learning_rate.set_value(learning_rates[min(epoch, len(learning_rates) - 1)])
+        learning_rate.set_value(
+               learning_rates[min(epoch, len(learning_rates) - 1)])
         subtask("Resuming at epoch {}".format(epoch+1))
         start = epoch+1
-    except EOFError:
-        task("No model state stored; starting afresh")
+except EOFError:
+    task("No model state stored; starting afresh")
 
 section("Training")
 # Finally, launch the training loop.
@@ -320,16 +339,18 @@ for epoch in range(start, end):
     validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
 
     # store model state
-    if args.cache is not None:
-        subtask("Storing trained parameters")
-        args.cache.seek(0)
-        args.cache.truncate()
-        formatver = 1
-        pickle.dump(formatver, args.cache)
-        pickle.dump([p.get_value() for p in saveparams], args.cache)
-        pickle.dump(epoch, args.cache)
-        pickle.dump(training, args.cache)
-        pickle.dump(validation, args.cache)
+    if args.outdir is not None:
+        sfilename = os.path.join(args.outdir, 'epoch-%03d.mdl' % epoch)
+        subtask("Storing trained parameters as {}".format(sfilename))
+        with open(sfilename, 'wb+') as sfile:
+            sfile.seek(0)
+            sfile.truncate()
+            formatver = 1
+            pickle.dump(formatver, sfile)
+            pickle.dump([p.get_value() for p in saveparams], sfile)
+            pickle.dump(epoch, sfile)
+            pickle.dump(training, sfile)
+            pickle.dump(validation, sfile)
 
     # Then we print the results for this epoch:
     subtask(("Epoch results:" +
@@ -359,10 +380,11 @@ if args.labels is not None:
         i = i+1
     del pred_out
 
-if args.confusion is not None:
+if args.confusion:
     section("Debugging")
     task("Evaluating confusion matrix on training data set")
-    pred_out = numpy.memmap(args.confusion, dtype=numpy.float32, shape=(len(X_train), cats), mode='w+')
+    cfile = open(os.path.join(args.outdir, 'train-confusion.db'), 'wb+')
+    pred_out = numpy.memmap(cfile, dtype=numpy.float32, shape=(len(X_train), cats), mode='w+')
 
     test_batches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
     p = progress(test_batches)
@@ -385,6 +407,7 @@ if args.confusion is not None:
                 index + 1,
                 100.0 * correct / len(X_train)))
     del pred_out
+    cfile.close()
 
 # Divides the image into 8x8 overlapping squares of 23x23 pixels, each
 # offset 15 pixels from the previous
@@ -405,11 +428,12 @@ def make_response_probe(image):
                         v * numpy.ones([pix, pix]))
     return result
 
-if args.response is not None:
+if args.response:
     section("Visualization")
     task("Evaluating response regions on training data set")
     assert args.batchsize == 256
-    resp_out = numpy.memmap(args.response, dtype=numpy.float32, shape=(len(X_train), 256), mode='w+')
+    rfile = open(os.path.join(args.outdir, 'train-response.db'), 'wb+')
+    resp_out = numpy.memmap(rfile, dtype=numpy.float32, shape=(len(X_train), 256), mode='w+')
     p = progress(len(X_train))
     for index in range(len(X_train)):
         probe = make_response_probe(X_train[index])
@@ -417,3 +441,4 @@ if args.response is not None:
         resp_out[index] = debug_fn(1, center, probe)[:,correct]
         p.update(index + 1)
     del resp_out
+    rfile.close()
