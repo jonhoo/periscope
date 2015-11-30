@@ -112,8 +112,8 @@ network = BatchNormLayer(network, nonlinearity=rectify)
 
 # 6th. Data size 3 -> 1
 network = lasagne.layers.DenseLayer(network, 512)
-network = DropoutLayer(network)
-# network = BatchNormLayer(network, nonlinearity=rectify)
+# network = DropoutLayer(network)
+network = BatchNormLayer(network, nonlinearity=rectify)
 
 # 7th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
