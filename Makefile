@@ -49,8 +49,9 @@ analyze response-large.db confusion-large.db: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
 		-e30 \
+		--labels \
 		--confusion \
-                --response \
+		--response \
 		$(MMAP_FILES)/full
 
 view: $(VENV) response-large.db Makefile

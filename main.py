@@ -10,6 +10,7 @@ import pickle
 import numpy
 import time
 import re
+import random
 import os
 import os.path
 
@@ -36,7 +37,8 @@ parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
 parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default='out')
-parser.add_argument('-l', '--labels', type=argparse.FileType('wb+'), help='record test set predictions to this file', default=None)
+parser.add_argument('--labels', help='record test set predictions to this file', action='store_true')
+parser.set_defaults(labels=False)
 parser.add_argument('--no-plot', help='skip the plot', action='store_false')
 parser.set_defaults(plot=True)
 parser.add_argument('--confusion', help='compute confusion stats', action='store_true')
@@ -59,7 +61,7 @@ subtask("Loading validation set")
 y_val = numpy.memmap(os.path.join(args.tagged, "val.labels.db"), dtype=numpy.int32, mode='r')
 X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_val), 3, imsz, imsz))
 
-if args.labels is not None:
+if args.labels:
     subtask("Loading test set")
     y_test = numpy.memmap(os.path.join(args.tagged, "test.labels.db"), dtype=numpy.int32, mode='r')
     X_test = numpy.memmap(os.path.join(args.tagged, "test.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
@@ -160,14 +162,23 @@ debug_fn = theano.function([flip_var, crop_var, input_var], test_prediction)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
-    end = len(inputs) - batchsize + 1
-    for start_idx in range(0, end, batchsize):
-        if shuffle:
-            start = numpy.random.randint(0, end)
-            excerpt = slice(start, start + batchsize)
+    end = len(inputs)
+    if shuffle:
+        start = random.randrange(end)
+        steps = [n % end for n in range(start, end + start, batchsize)]
+        random.shuffle(steps)
+    else:
+        steps = range(0, end, batchsize)
+    for start_idx in steps:
+        if shuffle and start_idx + batchsize > end:
+            # Handle wraparound case
+            e1 = slice(start_idx, end)
+            e2 = slice(0, (start_idx + batchsize) % end)
+            yield (numpy.concatenate([inputs[e1], inputs[e2]]),
+                   numpy.concatenate([targets[e1], targets[e2]]))
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        yield inputs[excerpt], targets[excerpt]
+            yield inputs[excerpt], targets[excerpt]
 
 training = []
 validation = []
@@ -286,8 +297,8 @@ for epoch in range(start, end):
     start_time = time.time()
 
     # How much work will we have to do?
-    train_batches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
-    val_batches = len(range(0, len(X_val) - args.batchsize + 1, args.batchsize))
+    train_batches = len(range(0, len(X_train), args.batchsize))
+    val_batches = len(range(0, len(X_val), args.batchsize))
     train_test_batches = val_batches
 
     # In each epoch, we do a pass over minibatches of the training data:
@@ -327,14 +338,14 @@ for epoch in range(start, end):
     val_acc1 = 0
     val_acc5 = 0
     p = progress(val_batches)
-    i = 1
+    i = 0
     for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
         loss, acc1, acc5 = val_fn(1, center, batch[0], batch[1])
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
+        i += 1
         p.update(i)
-        i = i+1
 
     # record performance
     training.append((train_loss/train_batches, train_acc1/train_test_batches, train_acc5/train_test_batches))
@@ -366,21 +377,23 @@ for epoch in range(start, end):
 
 replot()
 
-if args.labels is not None:
+if args.labels:
     section("Evaluation")
     task("Evaluating performance on test data set")
-    pred_out = numpy.memmap(args.labels, dtype=numpy.int32, shape=(len(X_test), 5))
+    efile = open(os.path.join(args.outdir, 'labels.db'), 'wb+')
+    pred_out = numpy.memmap(efile, dtype=numpy.int32, shape=(len(X_test), 5))
 
-    test_batches = len(range(0, len(X_test) - args.batchsize + 1, args.batchsize))
+    test_batches = len(range(0, len(X_test), args.batchsize))
     p = progress(test_batches)
 
-    i = 1
+    i = 0
     for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
-        s = (i-1)*args.batchsize
+        s = i * args.batchsize
         pred_out[s:s+args.batchsize, :] = test_fn(1, center, batch[0])[0]
+        i += 1
         p.update(i)
-        i = i+1
     del pred_out
+    efile.close()
 
 if args.confusion:
     section("Debugging")
@@ -388,7 +401,7 @@ if args.confusion:
     cfile = open(os.path.join(args.outdir, 'train-confusion.db'), 'wb+')
     pred_out = numpy.memmap(cfile, dtype=numpy.float32, shape=(len(X_train), cats), mode='w+')
 
-    test_batches = len(range(0, len(X_train) - args.batchsize + 1, args.batchsize))
+    test_batches = len(range(0, len(X_train), args.batchsize))
     p = progress(test_batches)
 
     i = 0
