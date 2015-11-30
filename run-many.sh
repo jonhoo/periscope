@@ -4,8 +4,7 @@ run() {
 	echo "Running experiment $ex" > /dev/stderr
 	git --no-pager diff --color
 	make solve
-	mv network-large.mdl "network-${ex}.mdl"
-	mv plot-large.png "plot-${ex}.png"
+	mv exp-large "exp-${ex}"
 }
 
 shutdown="no"
