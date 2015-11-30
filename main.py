@@ -68,7 +68,7 @@ if args.labels:
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
-learning_rates = numpy.logspace(-1.5, -3, 30, dtype=theano.config.floatX)
+learning_rates = numpy.logspace(-1.5, -4, 30, dtype=theano.config.floatX)
 learning_rates_var = theano.shared(learning_rates)
 learning_rate = theano.shared(learning_rates[0])
 epochi = T.iscalar('e')
@@ -93,29 +93,29 @@ network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 2nd. Data size 55 -> 27
-network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same')
+network = Conv2DLayer(network, 112, (5, 5), stride=1, pad='same')
 network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 3rd.  Data size 27 -> 13
-network = Conv2DLayer(network, 144, (3, 3), stride=1, pad='same')
+network = Conv2DLayer(network, 192, (3, 3), stride=1, pad='same')
 network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 4th.  Data size 11 -> 5
-network = Conv2DLayer(network, 216, (3, 3), stride=1)
+network = Conv2DLayer(network, 320, (3, 3), stride=1)
 network = BatchNormLayer(network, nonlinearity=rectify)
 network = MaxPool2DLayer(network, (3, 3), stride=2)
 
 # 5th. Data size 5 -> 3
-network = Conv2DLayer(network, 324, (3, 3), stride=1)
+network = Conv2DLayer(network, 512, (3, 3), stride=1)
 # network = DropoutLayer(network)
 network = BatchNormLayer(network, nonlinearity=rectify)
 
 # 6th. Data size 3 -> 1
 network = lasagne.layers.DenseLayer(network, 512)
-# network = DropoutLayer(network)
-network = BatchNormLayer(network, nonlinearity=rectify)
+network = DropoutLayer(network)
+# network = BatchNormLayer(network, nonlinearity=rectify)
 
 # 7th
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
