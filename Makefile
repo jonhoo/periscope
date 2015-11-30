@@ -46,8 +46,9 @@ analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
 		-e40 \
+		--labels \
 		--confusion \
-                --response \
+		--response \
 		$(MMAP_FILES)/full
 
 # these technically depend on $(PYTHON), but we don't want to add that
