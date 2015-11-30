@@ -34,22 +34,20 @@ $(IMDATA): $(IMTGZ)
 	tar mxvzf $< -C $(MP_DATA)
 
 solve-small: $(VENV) $(SRAW) Makefile
-	$(PYTHON) main.py -p plot.png -c network.mdl -e1 -b10 -s1 $(MMAP_FILES)/small
+	$(PYTHON) main.py -o exp-small -e1 -b10 -s1 $(MMAP_FILES)/small
 
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
-		-p plot-large.png \
-		-c network-large.mdl \
+		--outdir exp-large \
 		-e40 \
 		$(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
-		-p plot-large.png \
-		-c network-large.mdl \
+		--outdir exp-large \
 		-e40 \
-		-x confusion-large.db \
-		-r response-large.db \
+		--confusion \
+                --response \
 		$(MMAP_FILES)/full
 
 # these technically depend on $(PYTHON), but we don't want to add that
