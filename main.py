@@ -228,6 +228,8 @@ def latest_cachefile(outdir):
 os.makedirs(args.outdir, exist_ok=True)
 try:
     resumefile = latest_cachefile(args.outdir)
+    if resumefile is None:
+        raise EOFError
     with open(resumefile, 'rb') as lfile:
         section("Restoring state from {}".format(resumefile))
         lfile.seek(0)

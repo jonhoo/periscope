@@ -4,6 +4,7 @@ plot*.png
 network*.mdl
 mp-data
 tagged
+exp-*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
