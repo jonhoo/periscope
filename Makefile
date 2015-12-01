@@ -41,13 +41,11 @@ solve-small: $(VENV) $(SRAW) Makefile
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
-		-e40 \
 		--tagged $(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
-		-e40 \
 		--labels \
 		--confusion \
 		--response \
