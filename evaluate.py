@@ -14,16 +14,14 @@ import os
 import os.path
 
 parser = argparse.ArgumentParser()
-parser.add_argument('images', help='path to images/')
-parser.add_argument('devkit', help="path to dev kit's data/")
 parser.add_argument('predictions', type=argparse.FileType('rb+'), help='file with test predictions')
 parser.add_argument('-n', '--names', action='store_true', help='output category names', default=False)
+parser.add_argument('-d', '--devkit', help='devkit directory containing categories.txt', default='mp-dev_kit')
+parser.add_argument('-t', '--tagged', help='load tagged data from this directory', default='tagged/full')
 args = parser.parse_args()
 
-images = []
-for root, dirs, files in os.walk(os.path.join(args.images, "test"), followlinks=True):
-    for img in files:
-        images.append(os.path.relpath(os.path.join(root, img), args.images))
+filenames = [line.strip() for line in open(os.path.join(args.tagged,
+        'test.filenames.txt')).readlines()]
 
 categories = {}
 if args.names:
@@ -32,11 +30,11 @@ if args.names:
             c, ci = line.split(None, 1)
             categories[int(ci)] = os.path.basename(c)
 
-predictions = numpy.memmap(args.predictions, dtype=numpy.int32, shape=(len(images), 5))
+predictions = numpy.memmap(args.predictions, dtype=numpy.int32, shape=(len(filenames), 5))
 
 for i in range(len(predictions)):
     if args.names:
         cats = "\t".join([categories[ci] for ci in predictions[i]])
     else:
         cats = " ".join([str(c) for c in predictions[i]])
-    print("{} {}".format(images[i], cats))
+    print("{} {}".format(filenames[i], cats))
