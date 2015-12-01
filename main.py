@@ -76,7 +76,8 @@ cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1
 prepared = cropped[:,:,:,::flip_var]
 
 # input layer is always the same
-network = lasagne.layers.InputLayer((batchsz, 3, cropsz, cropsz), prepared)
+network = lasagne.layers.InputLayer(
+        (args.batchsize, 3, cropsz, cropsz), prepared)
 
 # import external network
 if args.network not in experiment.__dict__:
