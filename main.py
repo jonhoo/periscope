@@ -31,6 +31,7 @@ if theano.config.device.startswith("gpu"):
 parser = argparse.ArgumentParser()
 parser.add_argument('tagged', help='path to directory containing prepared files')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
+parser.add_argument('-n', '--negative', type=int, help='number of negative batches per epoch', default=0)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
@@ -71,7 +72,7 @@ learning_rates_var = theano.shared(learning_rates)
 learning_rate = theano.shared(learning_rates[0])
 epochi = T.iscalar('e')
 input_var = T.tensor4('X')
-target_var = T.ivector('y')
+target_var = T.matrix('y')
 
 # parameters
 flip_var = T.iscalar('f')
@@ -142,6 +143,12 @@ val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=
 top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
 test_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [top5_pred])
 debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
+
+def target_from_res(res):
+    target = numpy.zeros((len(res), cats), dtype=theano.config.floatX)
+    for ii in range(len(res)):
+        target[ii, res[ii]] = 1.0
+    return target
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
@@ -290,12 +297,23 @@ for epoch in range(start, end):
         flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)
-        train_loss += train_fn(epoch, flip, frame, inp, res)
+        train_loss += train_fn(epoch, flip, frame, inp, target_from_res(res))
         p.update(i)
         i = i+1
         if args.batch_stop != 0 and i > args.batch_stop:
             p.update(train_batches)
             break
+
+    # Then we do some negative passes
+    if args.negative != 0:
+        subtask("Training using {} negative batches".format(args.negative))
+        p = progress(args.negative)
+        i = 1
+        for ni in range(args.negative):
+            train_loss += train_fn(epoch, 1, center, numpy.random.rand(inp.shape[0], 3, imsz, imsz).astype(theano.config.floatX), numpy.zeros((len(res.shape), cats), dtype=theano.config.floatX)+(1.0/cats))
+            p.update(i)
+            i = i+1
+        train_batches += args.negative
 
     # Only do forward pass on a subset of the training data
     subtask("Doing forward pass on training data (size: {})".format(len(X_val)))
@@ -305,7 +323,7 @@ for epoch in range(start, end):
     train_acc5 = 0
     for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         i = i+1
-        _, acc1, acc5 = val_fn(inp, res)
+        _, acc1, acc5 = val_fn(inp, target_from_res(res))
         p.update(i)
         train_acc1 += acc1
         train_acc5 += acc5
@@ -320,7 +338,7 @@ for epoch in range(start, end):
     p = progress(val_batches)
     i = 0
     for inp, res in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        loss, acc1, acc5 = val_fn(inp, res)
+        loss, acc1, acc5 = val_fn(inp, target_from_res(res))
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5

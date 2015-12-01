@@ -34,18 +34,20 @@ $(IMDATA): $(IMTGZ)
 	tar mxvzf $< -C $(MP_DATA)
 
 solve-small: $(VENV) $(SRAW) Makefile
-	$(PYTHON) main.py -o exp-small -e1 -b10 -s1 $(MMAP_FILES)/small
+	$(PYTHON) main.py -o exp-small -e1 -b10 -n1 -s1 $(MMAP_FILES)/small
 
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
 		-e40 \
+		-n10 \
 		$(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
 		-e40 \
+		-n10 \
 		--labels \
 		--confusion \
 		--response \
