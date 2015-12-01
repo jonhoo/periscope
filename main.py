@@ -136,12 +136,12 @@ test_1_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, target_var, top_k=5))
 
 # compile a second function computing the validation loss and accuracy:
-val_fn = theano.function([flip_var, crop_var, input_var, target_var], [test_loss, test_1_acc, test_5_acc])
+val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [test_loss, test_1_acc, test_5_acc])
 
 # a function for test output
 top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
-test_fn = theano.function([flip_var, crop_var, input_var], [top5_pred])
-debug_fn = theano.function([flip_var, crop_var, input_var], test_prediction)
+test_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [top5_pred])
+debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
@@ -305,7 +305,7 @@ for epoch in range(start, end):
     train_acc5 = 0
     for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         i = i+1
-        _, acc1, acc5 = val_fn(1, center, inp, res)
+        _, acc1, acc5 = val_fn(inp, res)
         p.update(i)
         train_acc1 += acc1
         train_acc5 += acc5
@@ -320,7 +320,7 @@ for epoch in range(start, end):
     p = progress(val_batches)
     i = 0
     for inp, res in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        loss, acc1, acc5 = val_fn(1, center, inp, res)
+        loss, acc1, acc5 = val_fn(inp, res)
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
@@ -369,7 +369,7 @@ if args.labels:
     i = 0
     for inp, res in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
         s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = test_fn(1, center, inp)[0]
+        pred_out[s:s+args.batchsize, :] = test_fn(inp)[0]
         i += 1
         p.update(i)
     del pred_out
@@ -388,7 +388,7 @@ if args.confusion:
     accn = {}
     for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
         s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = debug_fn(1, center, inp)
+        pred_out[s:s+args.batchsize, :] = debug_fn(inp)
         i += 1
         p.update(i)
         topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
@@ -431,7 +431,7 @@ if args.response:
     for index in range(len(X_train)):
         probe = make_response_probe(X_train[index])
         correct = y_train[index]
-        resp_out[index] = debug_fn(1, center, probe)[:,correct]
+        resp_out[index] = debug_fn(probe)[:,correct]
         p.update(index + 1)
     del resp_out
     rfile.close()
