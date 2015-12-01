@@ -3,6 +3,7 @@ DK_DATA ?= ./mp-dev_kit
 MP_DATA ?= ./mp-data
 VENV = env/.built
 PYTHON = env/bin/python3
+NET ?= base
 
 RAW = $(MMAP_FILES)/full/train.labels.db \
       $(MMAP_FILES)/full/train.images.db \
@@ -40,12 +41,12 @@ solve-small: $(VENV) $(SRAW) Makefile
 
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
-		--outdir exp-large \
+                --network $(NET) \
 		--tagged $(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
-		--outdir exp-large \
+                --network $(NET) \
 		--labels \
 		--confusion \
 		--response \
