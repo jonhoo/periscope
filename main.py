@@ -77,7 +77,8 @@ target_var = T.ivector('y')
 flip_var = T.iscalar('f')
 crop_var = T.ivector('c') # ycrop, xcrop
 noise = T.tensor4('n')
-nonoise = numpy.zeros((args.batchsize, 3, cropsz, cropsz)).astype(theano.config.floatX)
+def nonoise(imgs):
+    return numpy.zeros((imgs, 3, cropsz, cropsz)).astype(theano.config.floatX)
 center = numpy.zeros((2,), dtype=numpy.int32)
 center.fill(numpy.floor((imsz - cropsz)/2))
 
@@ -138,12 +139,12 @@ test_1_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, target_var, top_k=5))
 
 # compile a second function computing the validation loss and accuracy:
-val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center), theano.Param(noise, default=nonoise)], [test_loss, test_1_acc, test_5_acc])
+val_fn = theano.function([input_var, target_var, noise, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [test_loss, test_1_acc, test_5_acc])
 
 # a function for test output
 top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
-test_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center), theano.Param(noise, default=nonoise)], [top5_pred])
-debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center), theano.Param(noise, default=nonoise)], test_prediction)
+test_fn = theano.function([input_var, noise, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [top5_pred])
+debug_fn = theano.function([input_var, noise, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
@@ -292,7 +293,7 @@ for epoch in range(start, end):
         flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)
-        train_loss += train_fn(epoch, flip, frame, numpy.random.normal(0.0, 0.02, (args.batchsize, 3, cropsz, cropsz)).astype(theano.config.floatX), inp, res)
+        train_loss += train_fn(epoch, flip, frame, numpy.random.normal(0.0, 0.02, (inp.shape[0], 3, cropsz, cropsz)).astype(theano.config.floatX), inp, res)
         p.update(i)
         i = i+1
         if args.batch_stop != 0 and i > args.batch_stop:
@@ -307,7 +308,7 @@ for epoch in range(start, end):
     train_acc5 = 0
     for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         i = i+1
-        _, acc1, acc5 = val_fn(inp, res)
+        _, acc1, acc5 = val_fn(inp, res, nonoise(inp.shape[0]))
         p.update(i)
         train_acc1 += acc1
         train_acc5 += acc5
@@ -322,7 +323,7 @@ for epoch in range(start, end):
     p = progress(val_batches)
     i = 0
     for inp, res in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        loss, acc1, acc5 = val_fn(inp, res)
+        loss, acc1, acc5 = val_fn(inp, res, nonoise(inp.shape[0]))
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
@@ -371,7 +372,7 @@ if args.labels:
     i = 0
     for inp, res in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
         s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = test_fn(inp)[0]
+        pred_out[s:s+args.batchsize, :] = test_fn(inp, nonoise(inp.shape[0]))[0]
         i += 1
         p.update(i)
     del pred_out
@@ -390,7 +391,7 @@ if args.confusion:
     accn = {}
     for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
         s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = debug_fn(inp)
+        pred_out[s:s+args.batchsize, :] = debug_fn(inp, nonoise(inp.shape[0]))
         i += 1
         p.update(i)
         topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
@@ -433,7 +434,7 @@ if args.response:
     for index in range(len(X_train)):
         probe = make_response_probe(X_train[index])
         correct = y_train[index]
-        resp_out[index] = debug_fn(probe)[:,correct]
+        resp_out[index] = debug_fn(probe, nonoise(inp.shape[0]))[:,correct]
         p.update(index + 1)
     del resp_out
     rfile.close()
