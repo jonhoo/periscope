@@ -3,6 +3,7 @@
 from progressbar import ProgressBar
 from pretty import *
 import argparse
+import experiment
 import lasagne
 import theano
 import theano.tensor as T
@@ -13,30 +14,16 @@ import re
 import random
 import os
 import os.path
-
-from lasagne.layers import DropoutLayer
-from lasagne.layers.normalization import BatchNormLayer
-
-from lasagne.nonlinearities import rectify, softmax
-
-Conv2DLayer = lasagne.layers.Conv2DLayer
-MaxPool2DLayer = lasagne.layers.MaxPool2DLayer
-if theano.config.device.startswith("gpu"):
-    import lasagne.layers.dnn
-    # Force GPU implementations if a GPU is available.
-    # Do not know why Theano is not selecting these impls
-    # by default as advertised.
-    if theano.sandbox.cuda.dnn.dnn_available():
-        Conv2DLayer = lasagne.layers.dnn.Conv2DDNNLayer
-        MaxPool2DLayer = lasagne.layers.dnn.MaxPool2DDNNLayer
+from lasagne.nonlinearities import softmax
 
 parser = argparse.ArgumentParser()
-parser.add_argument('tagged', help='path to directory containing prepared files')
+parser.add_argument('-t', '--tagged', help='path to directory containing prepared files', default='tagged/full')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
-parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default='out')
+parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default=None)
+parser.add_argument('-n', '--network', help='name of network experiment', default='base')
 parser.add_argument('--limit', type=int, help='limit analyses to this many images', default=None)
 parser.add_argument('--labels', help='record test set predictions to this file', action='store_true')
 parser.set_defaults(labels=False)
@@ -87,42 +74,21 @@ cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1
 prepared = cropped[:,:,:,::flip_var]
 
 # create a small convolutional neural network
-network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), prepared)
-# 1st. Data size 117 -> 111 -> 55
-network = Conv2DLayer(network, 64, (7, 7), stride=1)
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
+if args.network not in experiment.__dict__:
+    print("No network {} found.".format(args.network))
+networkfn = experiment.__dict__[args.network]
+network = networkfn(prepared, cropsz, args.batchsize)
 
-# 2nd. Data size 55 -> 27
-network = Conv2DLayer(network, 112, (5, 5), stride=1, pad='same')
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-
-# 3rd.  Data size 27 -> 13
-network = Conv2DLayer(network, 192, (3, 3), stride=1, pad='same')
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-
-# 4th.  Data size 11 -> 5
-network = Conv2DLayer(network, 320, (3, 3), stride=1)
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-
-# 5th. Data size 5 -> 3
-network = Conv2DLayer(network, 512, (3, 3), stride=1)
-# network = DropoutLayer(network)
-network = BatchNormLayer(network, nonlinearity=rectify)
-
-# 6th. Data size 3 -> 1
-network = lasagne.layers.DenseLayer(network, 512)
-network = DropoutLayer(network)
-# network = BatchNormLayer(network, nonlinearity=rectify)
-
-# 7th
+# Last softmax layer is always the same
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
 # Output
 prediction = lasagne.layers.get_output(network)
+
+if args.outdir is None:
+    outdir = "exp-%s" % args.network
+else:
+    outdir = args.outdir
 
 # create loss function
 from lasagne.regularization import regularize_network_params, l2, l1
@@ -242,11 +208,11 @@ def replot():
     ax_err.set_title('Match error')
 
     import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, dir=args.outdir) as fp:
+    with tempfile.NamedTemporaryFile(delete=False, dir=outdir) as fp:
         fig.savefig(fp, format='png', dpi=192)
         plt.close(fig)
         fp.close()
-        os.rename(fp.name, os.path.join(args.outdir, 'plot.png'))
+        os.rename(fp.name, os.path.join(outdir, 'plot.png'))
 
 start = 0
 
@@ -257,9 +223,9 @@ def latest_cachefile(outdir):
     caches.sort(key=lambda x: -int(re.match(r'^epoch-(\d+)\.mdl$', x).group(1)))
     return os.path.join(outdir, caches[0])
 
-os.makedirs(args.outdir, exist_ok=True)
+os.makedirs(outdir, exist_ok=True)
 try:
-    resumefile = latest_cachefile(args.outdir)
+    resumefile = latest_cachefile(outdir)
     if resumefile is None:
         raise EOFError
     with open(resumefile, 'rb') as lfile:
@@ -353,8 +319,8 @@ for epoch in range(start, end):
     validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
 
     # store model state
-    if args.outdir is not None:
-        sfilename = os.path.join(args.outdir, 'epoch-%03d.mdl' % epoch)
+    if outdir is not None:
+        sfilename = os.path.join(outdir, 'epoch-%03d.mdl' % epoch)
         subtask("Storing trained parameters as {}".format(sfilename))
         with open(sfilename, 'wb+') as sfile:
             sfile.seek(0)
@@ -381,7 +347,7 @@ replot()
 if args.labels:
     section("Evaluation")
     task("Evaluating performance on test data set")
-    efile = open(os.path.join(args.outdir, 'labels.db'), 'wb+')
+    efile = open(os.path.join(outdir, 'labels.db'), 'wb+')
     cases = len(X_test) if not args.limit else min(args.limit, len(X_test))
     pred_out = numpy.memmap(efile, dtype=numpy.int32, shape=(cases, 5))
 
@@ -401,7 +367,7 @@ if args.labels:
     efile.close()
 
 def make_confusion_db(name, fname, X, Y):
-    cfile = open(os.path.join(args.outdir, fname), 'wb+')
+    cfile = open(os.path.join(outdir, fname), 'wb+')
     cases = len(X) if not args.limit else min(args.limit, len(X))
     pred_out = numpy.memmap(
         cfile, dtype=numpy.float32, shape=(cases, cats), mode='w+')
@@ -468,7 +434,7 @@ def make_response_file(name, fname, X, Y):
     task("Evaluating response regions on %s" % name)
     assert args.batchsize == 256
     cases = len(X) if not args.limit else min(args.limit, len(X))
-    rfile = open(os.path.join(args.outdir, fname), 'wb+')
+    rfile = open(os.path.join(outdir, fname), 'wb+')
     resp_out = numpy.memmap(rfile, dtype=numpy.float32,
             shape=(cases, 256), mode='w+')
     p = progress(cases)
