@@ -37,6 +37,7 @@ parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
 parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default='out')
+parser.add_argument('--limit', type=int, help='limit analyses to this many images', default=None)
 parser.add_argument('--labels', help='record test set predictions to this file', action='store_true')
 parser.set_defaults(labels=False)
 parser.add_argument('--no-plot', help='skip the plot', action='store_false')
@@ -381,33 +382,37 @@ if args.labels:
     section("Evaluation")
     task("Evaluating performance on test data set")
     efile = open(os.path.join(args.outdir, 'labels.db'), 'wb+')
-    pred_out = numpy.memmap(efile, dtype=numpy.int32, shape=(len(X_test), 5))
+    cases = len(X_test) if not args.limit else min(args.limit, len(X_test))
+    pred_out = numpy.memmap(efile, dtype=numpy.int32, shape=(cases, 5))
 
-    test_batches = len(range(0, len(X_test), args.batchsize))
+    test_batches = len(range(0, cases, args.batchsize))
     p = progress(test_batches)
-
     i = 0
     for inp, res in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
         s = i * args.batchsize
+        if s + args.batchsize > pred_out.shape[0]:
+            inp = inp[:pred_out.shape[0] - s]
         pred_out[s:s+args.batchsize, :] = test_fn(1, center, inp)[0]
         i += 1
         p.update(i)
+        if i == test_batches:
+            break
     del pred_out
     efile.close()
 
-if args.confusion:
-    section("Debugging")
-    task("Evaluating confusion matrix on training data set")
-    cfile = open(os.path.join(args.outdir, 'train-confusion.db'), 'wb+')
-    pred_out = numpy.memmap(cfile, dtype=numpy.float32, shape=(len(X_train), cats), mode='w+')
-
-    test_batches = len(range(0, len(X_train), args.batchsize))
+def make_confusion_db(name, fname, X, Y):
+    cfile = open(os.path.join(args.outdir, fname), 'wb+')
+    cases = len(X) if not args.limit else min(args.limit, len(X))
+    pred_out = numpy.memmap(
+        cfile, dtype=numpy.float32, shape=(cases, cats), mode='w+')
+    test_batches = len(range(0, cases, args.batchsize))
     p = progress(test_batches)
-
     i = 0
     accn = {}
-    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
+    for inp, res in iterate_minibatches(X, Y, args.batchsize, shuffle=False):
         s = i * args.batchsize
+        if s + args.batchsize > pred_out.shape[0]:
+            inp = inp[:pred_out.shape[0] - s]
         pred_out[s:s+args.batchsize, :] = debug_fn(1, center, inp)
         i += 1
         p.update(i)
@@ -415,45 +420,67 @@ if args.confusion:
         for index in range(topindex.shape[0]):
             confusion = numpy.where(topindex[index] == res[index])[0][0]
             accn[confusion] = accn.get(confusion, 0) + 1
-        correct = 0
+        if i >= test_batches:
+            break
+    correct = 0
     for index in range(10):
         correct += accn.get(index, 0)
-        subtask("Training set acc@{}: {:.2f}%".format(
+        subtask("{} acc@{}: {:.2f}%".format(
+                name,
                 index + 1,
-                100.0 * correct / len(X_train)))
+                100.0 * correct / cases))
     del pred_out
     cfile.close()
 
-# Divides the image into 8x8 overlapping squares of 23x23 pixels, each
-# offset 15 pixels from the previous
+if args.confusion:
+    section("Debugging")
+    task("Evaluating confusion matrix on validation data")
+    make_confusion_db('Validation set', 'val.confusion.db', X_val, y_val)
+    task("Evaluating confusion matrix on training data set")
+    make_confusion_db('Training set', 'train.confusion.db', X_train, y_train)
+
+# Divides the image into 16x16 overlapping squares of 23x23 pixels, each
+# offset 7 pixels from the previous
 def make_response_probe(image):
     res = 16
-    pix = 27
-    st = 6
-    off = 5
+    pix = 23
+    st = 7
     result = numpy.tile(image, (res*res, 1, 1, 1))
     for x in range(res):
         for y in range(res):
             for c in range(3):
                 avg = numpy.average(
-                        result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix])
-                noise = numpy.random.random(size=[pix, pix]) * 128 + 64
-                v = (noise + avg) / 2
-                result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix] = (
-                        v * numpy.ones([pix, pix]))
+                        result[x + y * res, c,
+                               y*st:y*st+pix, x*st:x*st+pix])
+                anti = (avg + 0.5) * numpy.ones([pix, pix])
+                noise = numpy.random.normal(size=[pix-4, pix-4])
+                box = anti
+                box[2:pix-2,2:pix-2] += noise + 10
+                box = box % 1
+                # noise = (noise + anti) % 1
+                # noise = avg * numpy.ones([pix, pix])
+                # noise = anti * numpy.ones([pix, pix])
+                result[x + y * res, c,
+                       y*st:y*st+pix, x*st:x*st+pix] = box
     return result
 
-if args.response:
-    section("Visualization")
-    task("Evaluating response regions on training data set")
+def make_response_file(name, fname, X, Y):
+    task("Evaluating response regions on %s" % name)
     assert args.batchsize == 256
-    rfile = open(os.path.join(args.outdir, 'train-response.db'), 'wb+')
-    resp_out = numpy.memmap(rfile, dtype=numpy.float32, shape=(len(X_train), 256), mode='w+')
-    p = progress(len(X_train))
-    for index in range(len(X_train)):
-        probe = make_response_probe(X_train[index])
-        correct = y_train[index]
+    cases = len(X) if not args.limit else min(args.limit, len(X))
+    rfile = open(os.path.join(args.outdir, fname), 'wb+')
+    resp_out = numpy.memmap(rfile, dtype=numpy.float32,
+            shape=(cases, 256), mode='w+')
+    p = progress(cases)
+    for index in range(cases):
+        probe = make_response_probe(X[index])
+        correct = Y[index]
         resp_out[index] = debug_fn(1, center, probe)[:,correct]
         p.update(index + 1)
     del resp_out
     rfile.close()
+
+if args.response:
+    section("Visualization")
+    make_response_file('validation set', 'val.response.db', X_val, y_val)
+    make_response_file('training set', 'train.response.db', X_train, y_train)

@@ -45,7 +45,7 @@ solve: $(VENV) $(RAW) Makefile
 		-e30 \
 		$(MMAP_FILES)/full
 
-analyze response-large.db confusion-large.db: $(VENV) $(RAW) Makefile
+analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
 		-e30 \
@@ -54,12 +54,12 @@ analyze response-large.db confusion-large.db: $(VENV) $(RAW) Makefile
 		--response \
 		$(MMAP_FILES)/full
 
-view: $(VENV) response-large.db Makefile
+view: $(VENV) exp-large/train-response.db
 	$(PYTHON) view.py \
-		-r exp-large/train-response.db \
                 -t $(MMAP_FILES)/full \
                 -d $(DK_DATA) \
-                -o exp-large/train-response
+                --serve \
+                -o exp-large
 
 # these technically depend on $(PYTHON), but we don't want to add that
 # dependency, because then we have to re-prepare if we ever change env.sh
