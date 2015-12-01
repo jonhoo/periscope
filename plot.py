@@ -3,6 +3,7 @@
 import argparse
 import numpy
 import sys
+import re
 import os
 import os.path
 import tempfile
@@ -15,6 +16,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument('model',
                     type=argparse.FileType('rb'),
+                    nargs='+',
                     help='path to .mdl to extract plot data from'
                     )
 parser.add_argument('-l',
@@ -30,29 +32,34 @@ parser.add_argument('-a',
                     action='store_true')
 args = parser.parse_args()
 
+maxe = 0
 training = []
 validation = []
 
-try:
-    import pickle
-    args.model.seek(0)
-    formatver = pickle.load(args.model)
-    if type(formatver) != int:
-        formatver = 0
-        args.model.seek(0)
+for model in args.model:
+    try:
+        import pickle
+        model.seek(0)
+        formatver = pickle.load(model)
+        if type(formatver) != int:
+            formatver = 0
+            model.seek(0)
 
-    # add imports for unpickle to work
-    import lasagne
-    import theano
-    pickle.load(args.model)  # state
+        # add imports for unpickle to work
+        import lasagne
+        import theano
+        pickle.load(model)  # state
 
-    # the things we actually care about
-    epoch = pickle.load(args.model)
-    training = pickle.load(args.model)
-    validation = pickle.load(args.model)
-except EOFError:
-    print("Invalid model given")
-    sys.exit(1)
+        # the things we actually care about
+        epoch = pickle.load(model)
+        if epoch > maxe:
+            maxe = epoch
+
+        training.append(pickle.load(model))
+        validation.append(pickle.load(model))
+    except EOFError:
+        print("Model {} is invalid".format(model.name))
+        sys.exit(1)
 
 sns.set(style="ticks", color_codes=True)
 
@@ -65,28 +72,47 @@ else:
 
 # plot error
 ax_err.grid(True)
-ax_err.set_xlim(1, epoch+1)
+ax_err.set_xlim(1, maxe+1)
 ax_err.set_ylim(0, 1)
 ax_err.yaxis.set_ticks(numpy.arange(0.0, 1.1, 0.1))
-xend = len(training)+1
-ax_err.plot(range(1, xend), [1-dp[1] for dp in training], 'b', marker='o', markersize=4)
-ax_err.plot(range(1, xend), [1-dp[2] for dp in training], 'r', marker='o', markersize=4)
-xend = len(validation)+1
-ax_err.plot(range(1, xend), [1-dp[1] for dp in validation], 'y--', marker='s', markersize=4)
-ax_err.plot(range(1, xend), [1-dp[2] for dp in validation], 'm--', marker='s', markersize=4)
-ax_err.legend(['Training exact', 'Training top 5', 'Validation exact', 'Validation top 5'])
 ax_err.set_title('Match error')
 
 if not args.accuracy:
     # plot loss
     ax_loss.grid(True)
-    ax_loss.set_xlim(1, epoch+1)
-    xend = len(training)+1
-    ax_loss.plot(range(1, xend), [dp[0] for dp in training], 'b', marker='o', markersize=4)
-    xend = len(validation)+1
-    ax_loss.plot(range(1, xend), [dp[0] for dp in validation], 'r--', marker='o', markersize=4)
-    ax_loss.legend(['Training loss', 'Validation loss'])
+    ax_loss.set_xlim(1, maxe+1)
     ax_loss.set_title('Model loss')
+
+tlegends = []
+llegends = []
+for i in range(len(training)):
+    model = re.sub('\.mdl$', '', args.model[i].name)
+
+    xend = len(training[i])+1
+    ax_err.plot(range(1, xend), [1-dp[1] for dp in training[i]], '', marker='o', markersize=4)
+    tlegends.append('{} training exact'.format(model))
+    ax_err.plot(range(1, xend), [1-dp[2] for dp in training[i]], '', marker='o', markersize=4)
+    tlegends.append('{} training top 5'.format(model))
+
+    xend = len(validation[i])+1
+    ax_err.plot(range(1, xend), [1-dp[1] for dp in validation[i]], '--', marker='s', markersize=4)
+    tlegends.append('{} validation exact'.format(model))
+    ax_err.plot(range(1, xend), [1-dp[2] for dp in validation[i]], '--', marker='s', markersize=4)
+    tlegends.append('{} validation top 5'.format(model))
+
+    if not args.accuracy:
+        # plot loss
+        xend = len(training[i])+1
+        ax_loss.plot(range(1, xend), [dp[0] for dp in training[i]], '', marker='o', markersize=4)
+        llegends.append('{} training loss'.format(model))
+
+        xend = len(validation[i])+1
+        ax_loss.plot(range(1, xend), [dp[0] for dp in validation[i]], '--', marker='o', markersize=4)
+        llegends.append('{} validation loss'.format(model))
+
+ax_err.legend(tlegends)
+if not args.accuracy:
+    ax_loss.legends(llegends)
 
 fig.savefig(sys.stdout, format='png', dpi=192)
 plt.close(fig)
