@@ -40,14 +40,14 @@ solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
 		-e40 \
-		-n10 \
+		-n1 \
 		$(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
 		-e40 \
-		-n10 \
+		-n1 \
 		--labels \
 		--confusion \
 		--response \

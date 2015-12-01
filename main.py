@@ -31,7 +31,7 @@ if theano.config.device.startswith("gpu"):
 parser = argparse.ArgumentParser()
 parser.add_argument('tagged', help='path to directory containing prepared files')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
-parser.add_argument('-n', '--negative', type=int, help='number of negative batches per epoch', default=0)
+parser.add_argument('-n', '--negative', type=int, help='number of negative samples to add per batch', default=0)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
@@ -293,27 +293,23 @@ for epoch in range(start, end):
     p = progress(train_batches)
     i = 1
     frame = numpy.zeros((2,), dtype=numpy.int32)
-    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
+    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize-args.negative, shuffle=True):
         flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)
-        train_loss += train_fn(epoch, flip, frame, inp, target_from_res(res))
+        res = target_from_res(res)
+
+        # mix in some negative examples
+        if args.negative != 0:
+            inp = numpy.concatenate([inp, numpy.random.rand(args.negative, 3, imsz, imsz).astype(theano.config.floatX)])
+            res = numpy.concatenate([res, numpy.zeros((args.negative, cats), dtype=theano.config.floatX)+(1.0/cats)])
+
+        train_loss += train_fn(epoch, flip, frame, inp, res)
         p.update(i)
         i = i+1
         if args.batch_stop != 0 and i > args.batch_stop:
             p.update(train_batches)
             break
-
-    # Then we do some negative passes
-    if args.negative != 0:
-        subtask("Training using {} negative batches".format(args.negative))
-        p = progress(args.negative)
-        i = 1
-        for ni in range(args.negative):
-            train_loss += train_fn(epoch, 1, center, numpy.random.rand(inp.shape[0], 3, imsz, imsz).astype(theano.config.floatX), numpy.zeros((len(res.shape), cats), dtype=theano.config.floatX)+(1.0/cats))
-            p.update(i)
-            i = i+1
-        train_batches += args.negative
 
     # Only do forward pass on a subset of the training data
     subtask("Doing forward pass on training data (size: {})".format(len(X_val)))
