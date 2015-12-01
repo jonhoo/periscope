@@ -284,7 +284,7 @@ for epoch in range(start, end):
     start_time = time.time()
 
     # How much work will we have to do?
-    train_batches = len(range(0, len(X_train), args.batchsize-1))
+    train_batches = len(range(0, len(X_train), args.batchsize-args.negative))
     val_batches = len(range(0, len(X_val), args.batchsize))
     train_test_batches = val_batches
 
