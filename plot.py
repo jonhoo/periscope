@@ -110,7 +110,7 @@ for i in range(len(training)):
         ax_loss.plot(range(1, xend), [dp[0] for dp in validation[i]], '--', marker='o', markersize=4)
         llegends.append('{} validation loss'.format(model))
 
-ax_err.legend(tlegends)
+ax_err.legend(tlegends, ncol=2, prop={'size':6})
 if not args.accuracy:
     ax_loss.legends(llegends)
 
