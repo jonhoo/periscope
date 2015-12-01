@@ -192,6 +192,9 @@ def replot():
 
     # styles
     ax_loss.grid(True)
+    ax_err.grid(b=True, which='major', color='b', linestyle='-', alpha=0.2)
+    ax_err.grid(b=True, which='minor', color='b', linestyle='-', alpha=0.1)
+    ax_err.minorticks_on()
     ax_err.grid(True)
     #ax_loss.set_yscale('log')
     #ax_err.set_yscale('log')
