@@ -88,29 +88,33 @@ llegends = []
 for i in range(len(training)):
     model = re.sub('\.mdl$', '', args.model[i].name)
 
+    # exact is s, top5 is o
+    # training is '--', validation is ''
+
     xend = len(training[i])+1
-    ax_err.plot(range(1, xend), [1-dp[1] for dp in training[i]], '', marker='o', markersize=4)
+    c = ax_err.plot(range(1, xend), [1-dp[1] for dp in training[i]], '--', marker='s', markersize=4)
+    c = c[0].get_color()
     tlegends.append('{} training exact'.format(model))
-    ax_err.plot(range(1, xend), [1-dp[2] for dp in training[i]], '', marker='o', markersize=4)
+    ax_err.plot(range(1, xend), [1-dp[2] for dp in training[i]], '--', color=c, marker='o', markersize=4)
     tlegends.append('{} training top 5'.format(model))
 
     xend = len(validation[i])+1
-    ax_err.plot(range(1, xend), [1-dp[1] for dp in validation[i]], '--', marker='s', markersize=4)
+    ax_err.plot(range(1, xend), [1-dp[1] for dp in validation[i]], '', color=c, marker='s', markersize=4)
     tlegends.append('{} validation exact'.format(model))
-    ax_err.plot(range(1, xend), [1-dp[2] for dp in validation[i]], '--', marker='s', markersize=4)
+    ax_err.plot(range(1, xend), [1-dp[2] for dp in validation[i]], '', color=c, marker='o', markersize=4)
     tlegends.append('{} validation top 5'.format(model))
 
     if not args.accuracy:
         # plot loss
         xend = len(training[i])+1
-        ax_loss.plot(range(1, xend), [dp[0] for dp in training[i]], '', marker='o', markersize=4)
+        ax_loss.plot(range(1, xend), [dp[0] for dp in training[i]], '--', color=c, marker='o', markersize=4)
         llegends.append('{} training loss'.format(model))
 
         xend = len(validation[i])+1
-        ax_loss.plot(range(1, xend), [dp[0] for dp in validation[i]], '--', marker='o', markersize=4)
+        ax_loss.plot(range(1, xend), [dp[0] for dp in validation[i]], '', color=c, marker='o', markersize=4)
         llegends.append('{} validation loss'.format(model))
 
-ax_err.legend(tlegends, ncol=2, prop={'size':6})
+ax_err.legend(tlegends, ncol=len(training), prop={'size':6})
 if not args.accuracy:
     ax_loss.legends(llegends)
 
