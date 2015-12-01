@@ -116,7 +116,7 @@ for i in range(len(training)):
 
 ax_err.legend(tlegends, ncol=len(training), prop={'size':6})
 if not args.accuracy:
-    ax_loss.legends(llegends)
+    ax_loss.legend(llegends)
 
 fig.savefig(sys.stdout, format='png', dpi=192)
 plt.close(fig)
