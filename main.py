@@ -84,7 +84,7 @@ cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1
 prepared = cropped[:,:,:,::flip_var]
 
 # create a small convolutional neural network
-network = lasagne.layers.InputLayer((None, 3, cropsz, cropsz), prepared)
+network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), prepared)
 # 1st
 network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=rectify)
 network = BatchNormLayer(network, nonlinearity=rectify)
@@ -153,7 +153,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     else:
         steps = range(0, end, batchsize)
     for start_idx in steps:
-        if shuffle and start_idx + batchsize > end:
+        if start_idx + batchsize > end:
             # Handle wraparound case
             e1 = slice(start_idx, end)
             e2 = slice(0, (start_idx + batchsize) % end)
@@ -319,12 +319,16 @@ for epoch in range(start, end):
     val_acc5 = 0
     p = progress(val_batches)
     i = 0
-    for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        loss, acc1, acc5 = val_fn(1, center, batch[0], batch[1])
+    for inp, res in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
+        i += 1
+        if i is val_batches:
+            lastlen = (len(X_val) - 1) % args.batchsize + 1
+            inp = inp[:lastlen]
+            res = res[:lastlen]
+        loss, acc1, acc5 = val_fn(1, center, inp, res)
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
-        i += 1
         p.update(i)
 
     # record performance
@@ -367,10 +371,13 @@ if args.labels:
     p = progress(test_batches)
 
     i = 0
-    for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
+    for inp, res in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
         s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = test_fn(1, center, batch[0])[0]
         i += 1
+        if i is test_batches:
+            lastlen = (len(X_test) - 1) % args.batchsize + 1
+            inp = inp[:lastlen]
+        pred_out[s:s+args.batchsize, :] = test_fn(1, center, inp)[0]
         p.update(i)
     del pred_out
     efile.close()
@@ -386,14 +393,19 @@ if args.confusion:
 
     i = 0
     accn = {}
-    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
+    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
         s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = debug_fn(1, center, batch[0])
         i += 1
+        lastlen = args.batchsize
+        if i == test_batches:
+            lastlen = (len(X_train) - 1) % args.batchsize + 1
+            inp = inp[:lastlen]
+            res = res[:lastlen]
+        pred_out[s:s+args.batchsize, :] = debug_fn(1, center, inp)
         p.update(i)
         topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
-        for index in range(args.batchsize):
-            confusion = numpy.where(topindex[index] == batch[1][index])[0][0]
+        for index in range(lastlen):
+            confusion = numpy.where(topindex[index] == res[index])[0][0]
             accn[confusion] = accn.get(confusion, 0) + 1
         correct = 0
     for index in range(10):
