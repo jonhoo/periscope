@@ -84,7 +84,7 @@ cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1
 prepared = cropped[:,:,:,::flip_var]
 
 # create a small convolutional neural network
-network = lasagne.layers.InputLayer((None, 3, cropsz, cropsz), prepared)
+network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), prepared)
 # 1st
 network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=rectify)
 network = BatchNormLayer(network, nonlinearity=rectify)
@@ -392,7 +392,7 @@ if args.confusion:
         i += 1
         p.update(i)
         topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
-        for index in range(args.batchsize):
+        for index in range(topindex.shape[0]):
             confusion = numpy.where(topindex[index] == batch[1][index])[0][0]
             accn[confusion] = accn.get(confusion, 0) + 1
         correct = 0
