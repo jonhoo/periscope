@@ -6,11 +6,13 @@ PYTHON = env/bin/python3
 
 RAW = $(MMAP_FILES)/full/train.labels.db \
       $(MMAP_FILES)/full/train.images.db \
+      $(MMAP_FILES)/full/train.filenames.txt \
       #$(MMAP_FILES)/full/val.images.db \
       #$(MMAP_FILES)/full/test.images.db \
 
 SRAW = $(MMAP_FILES)/small/train.labels.db \
        $(MMAP_FILES)/small/train.images.db \
+       $(MMAP_FILES)/small/train.filenames.txt \
        #$(MMAP_FILES)/small/val.images.db \
        #$(MMAP_FILES)/small/test.images.db \
 
