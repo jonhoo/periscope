@@ -29,7 +29,7 @@ if theano.config.device.startswith("gpu"):
         MaxPool2DLayer = lasagne.layers.dnn.MaxPool2DDNNLayer
 
 parser = argparse.ArgumentParser()
-parser.add_argument('tagged', help='path to directory containing prepared files')
+parser.add_argument('-t', '--tagged', help='path to directory containing prepared files', default='tagged/full')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)

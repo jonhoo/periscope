@@ -42,7 +42,7 @@ solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
 		--outdir exp-large \
 		-e40 \
-		$(MMAP_FILES)/full
+		--tagged $(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
@@ -51,14 +51,14 @@ analyze: $(VENV) $(RAW) Makefile
 		--labels \
 		--confusion \
 		--response \
-		$(MMAP_FILES)/full
+		--tagged $(MMAP_FILES)/full
 
 view: $(VENV)
 	$(PYTHON) view.py \
-                -t $(MMAP_FILES)/full \
+                --tagged $(MMAP_FILES)/full \
                 -d $(DK_DATA) \
                 --serve \
-                -o exp-large
+                --outdir exp-large
 
 # these technically depend on $(PYTHON), but we don't want to add that
 # dependency, because then we have to re-prepare if we ever change env.sh
