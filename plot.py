@@ -30,6 +30,7 @@ parser.add_argument('-a',
                     help='give only accuracy plot',
                     default=False,
                     action='store_true')
+parser.add_argument('-f', '--format', help='image format', default='png')
 args = parser.parse_args()
 
 maxe = 0
@@ -118,5 +119,5 @@ ax_err.legend(tlegends, ncol=len(training), prop={'size':8})
 if not args.accuracy:
     ax_loss.legend(llegends)
 
-fig.savefig(sys.stdout, format='svg', dpi=96)
+fig.savefig(sys.stdout, format=args.format, dpi=96)
 plt.close(fig)
