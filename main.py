@@ -86,9 +86,9 @@ network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 prediction = lasagne.layers.get_output(network)
 
 if args.outdir is None:
-    outdir = "exp-%s" % args.network
+    args.outdir = "exp-%s" % args.network
 else:
-    outdir = args.outdir
+    args.outdir = args.outdir
 
 # create loss function
 from lasagne.regularization import regularize_network_params, l2, l1
@@ -120,12 +120,12 @@ test_1_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, target_var, top_k=5))
 
 # compile a second function computing the validation loss and accuracy:
-val_fn = theano.function([flip_var, crop_var, input_var, target_var], [test_loss, test_1_acc, test_5_acc])
+val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [test_loss, test_1_acc, test_5_acc])
 
 # a function for test output
 top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
-test_fn = theano.function([flip_var, crop_var, input_var], [top5_pred])
-debug_fn = theano.function([flip_var, crop_var, input_var], test_prediction)
+test_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [top5_pred])
+debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
@@ -292,7 +292,7 @@ for epoch in range(start, end):
     train_acc5 = 0
     for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         i = i+1
-        _, acc1, acc5 = val_fn(1, center, inp, res)
+        _, acc1, acc5 = val_fn(inp, res)
         p.update(i)
         train_acc1 += acc1
         train_acc5 += acc5
@@ -307,7 +307,7 @@ for epoch in range(start, end):
     p = progress(val_batches)
     i = 0
     for inp, res in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        loss, acc1, acc5 = val_fn(1, center, inp, res)
+        loss, acc1, acc5 = val_fn(inp, res)
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
@@ -347,7 +347,7 @@ replot()
 if args.labels:
     section("Evaluation")
     task("Evaluating performance on test data set")
-    efile = open(os.path.join(outdir, 'labels.db'), 'wb+')
+    efile = open(os.path.join(args.outdir, 'labels.db'), 'wb+')
     cases = len(X_test) if not args.limit else min(args.limit, len(X_test))
     pred_out = numpy.memmap(efile, dtype=numpy.int32, shape=(cases, 5))
 
@@ -358,7 +358,7 @@ if args.labels:
         s = i * args.batchsize
         if s + args.batchsize > pred_out.shape[0]:
             inp = inp[:pred_out.shape[0] - s]
-        pred_out[s:s+args.batchsize, :] = test_fn(1, center, inp)[0]
+        pred_out[s:s+args.batchsize, :] = test_fn(inp)[0]
         i += 1
         p.update(i)
         if i == test_batches:
@@ -367,7 +367,7 @@ if args.labels:
     efile.close()
 
 def make_confusion_db(name, fname, X, Y):
-    cfile = open(os.path.join(outdir, fname), 'wb+')
+    cfile = open(os.path.join(args.outdir, fname), 'wb+')
     cases = len(X) if not args.limit else min(args.limit, len(X))
     pred_out = numpy.memmap(
         cfile, dtype=numpy.float32, shape=(cases, cats), mode='w+')
@@ -379,7 +379,7 @@ def make_confusion_db(name, fname, X, Y):
         s = i * args.batchsize
         if s + args.batchsize > pred_out.shape[0]:
             inp = inp[:pred_out.shape[0] - s]
-        pred_out[s:s+args.batchsize, :] = debug_fn(1, center, inp)
+        pred_out[s:s+args.batchsize, :] = debug_fn(inp)
         i += 1
         p.update(i)
         topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
@@ -434,14 +434,14 @@ def make_response_file(name, fname, X, Y):
     task("Evaluating response regions on %s" % name)
     assert args.batchsize == 256
     cases = len(X) if not args.limit else min(args.limit, len(X))
-    rfile = open(os.path.join(outdir, fname), 'wb+')
+    rfile = open(os.path.join(args.outdir, fname), 'wb+')
     resp_out = numpy.memmap(rfile, dtype=numpy.float32,
             shape=(cases, 256), mode='w+')
     p = progress(cases)
     for index in range(cases):
         probe = make_response_probe(X[index])
         correct = Y[index]
-        resp_out[index] = debug_fn(1, center, probe)[:,correct]
+        resp_out[index] = debug_fn(probe)[:,correct]
         p.update(index + 1)
     del resp_out
     rfile.close()

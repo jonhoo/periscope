@@ -4,6 +4,7 @@ run() {
 	echo "Running experiment $ex" > /dev/stderr
 	git --no-pager diff --color
 	make solve
+	rm -rf "exp-${ex}"
 	mv exp-large "exp-${ex}"
 }
 

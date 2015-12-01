@@ -63,6 +63,13 @@ view: $(VENV)
                 --serve \
                 -outdir exp-large
 
+view: $(VENV)
+	$(PYTHON) view.py \
+                -t $(MMAP_FILES)/full \
+                -d $(DK_DATA) \
+                --serve \
+                -o exp-large
+
 # these technically depend on $(PYTHON), but we don't want to add that
 # dependency, because then we have to re-prepare if we ever change env.sh
 $(SRAW): $(IMDATA) prepare.py
