@@ -325,18 +325,17 @@ for epoch in range(start, end):
     validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
 
     # store model state
-    if args.outdir is not None:
-        sfilename = os.path.join(args.outdir, 'epoch-%03d.mdl' % epoch)
-        subtask("Storing trained parameters as {}".format(sfilename))
-        with open(sfilename, 'wb+') as sfile:
-            sfile.seek(0)
-            sfile.truncate()
-            formatver = 1
-            pickle.dump(formatver, sfile)
-            pickle.dump([p.get_value() for p in saveparams], sfile)
-            pickle.dump(epoch, sfile)
-            pickle.dump(training, sfile)
-            pickle.dump(validation, sfile)
+    sfilename = os.path.join(args.outdir, 'epoch-%03d.mdl' % epoch)
+    subtask("Storing trained parameters as {}".format(sfilename))
+    with open(sfilename, 'wb+') as sfile:
+        sfile.seek(0)
+        sfile.truncate()
+        formatver = 1
+        pickle.dump(formatver, sfile)
+        pickle.dump([p.get_value() for p in saveparams], sfile)
+        pickle.dump(epoch, sfile)
+        pickle.dump(training, sfile)
+        pickle.dump(validation, sfile)
 
     # Then we print the results for this epoch:
     subtask(("Epoch results:" +
