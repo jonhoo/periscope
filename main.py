@@ -161,8 +161,10 @@ if args.plot:
     matplotlib.use('Agg') # avoid the need for X
 
 def replot():
+    global args
     if not args.plot:
         return
+
     global training
     global validation
     if len(validation) == 0:
@@ -219,16 +221,17 @@ def replot():
 
 start = 0
 
-def latest_cachefile(outdir):
-    caches = [n for n in os.listdir(outdir) if re.match(r'^epoch-\d+\.mdl$', n)]
+def latest_cachefile():
+    global args
+    caches = [n for n in os.listdir(args.outdir) if re.match(r'^epoch-\d+\.mdl$', n)]
     if len(caches) == 0:
         return None
     caches.sort(key=lambda x: -int(re.match(r'^epoch-(\d+)\.mdl$', x).group(1)))
-    return os.path.join(outdir, caches[0])
+    return os.path.join(args.outdir, caches[0])
 
 os.makedirs(args.outdir, exist_ok=True)
 try:
-    resumefile = latest_cachefile(args.outdir)
+    resumefile = latest_cachefile()
     if resumefile is None:
         raise EOFError
     with open(resumefile, 'rb') as lfile:
@@ -370,6 +373,7 @@ if args.labels:
     efile.close()
 
 def make_confusion_db(name, fname, X, Y):
+    global args
     cfile = open(os.path.join(args.outdir, fname), 'wb+')
     cases = len(X) if not args.limit else min(args.limit, len(X))
     pred_out = numpy.memmap(
@@ -434,6 +438,7 @@ def make_response_probe(image):
     return result
 
 def make_response_file(name, fname, X, Y):
+    global args
     task("Evaluating response regions on %s" % name)
     assert args.batchsize == 256
     cases = len(X) if not args.limit else min(args.limit, len(X))
