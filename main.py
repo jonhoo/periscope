@@ -3,6 +3,7 @@
 from progressbar import ProgressBar
 from pretty import *
 import argparse
+import experiment
 import lasagne
 import theano
 import theano.tensor as T
@@ -14,27 +15,14 @@ import random
 import os
 import os.path
 
-from lasagne.layers.normalization import BatchNormLayer
-from lasagne.nonlinearities import rectify, softmax
-
-Conv2DLayer = lasagne.layers.Conv2DLayer
-MaxPool2DLayer = lasagne.layers.MaxPool2DLayer
-if theano.config.device.startswith("gpu"):
-    import lasagne.layers.dnn
-    # Force GPU implementations if a GPU is available.
-    # Do not know why Theano is not selecting these impls
-    # by default as advertised.
-    if theano.sandbox.cuda.dnn.dnn_available():
-        Conv2DLayer = lasagne.layers.dnn.Conv2DDNNLayer
-        MaxPool2DLayer = lasagne.layers.dnn.MaxPool2DDNNLayer
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--tagged', help='path to directory containing prepared files', default='tagged/full')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
-parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default='out')
+parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default=None)
+parser.add_argument('-n', '--network', help='name of network experiment', default='base')
 parser.add_argument('--limit', type=int, help='limit analyses to this many images', default=None)
 parser.add_argument('--labels', help='record test set predictions to this file', action='store_true')
 parser.set_defaults(labels=False)
@@ -46,6 +34,9 @@ parser.add_argument('--response', help='compute response region', action='store_
 parser.set_defaults(response=False)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
+
+if args.outdir is None:
+    args.outdir = "exp-{}".format(args.network)
 
 imsz = 128
 cropsz = 117
@@ -84,24 +75,19 @@ center.fill(numpy.floor((imsz - cropsz)/2))
 cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
 prepared = cropped[:,:,:,::flip_var]
 
-# create a small convolutional neural network
-network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), prepared)
-# 1st
-network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=rectify)
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 2nd
-network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same')
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 3rd
-network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same')
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 4th
-network = lasagne.layers.DenseLayer(network, 512)
-network = BatchNormLayer(network, nonlinearity=rectify)
-# 5th
+# input layer is always the same
+network = lasagne.layers.InputLayer((batchsz, 3, cropsz, cropsz), prepared)
+
+# import external network
+if args.network not in experiment.__dict__:
+    print("No network {} found.".format(args.network))
+    sys.exit(1)
+
+# dispatch to user-defined network
+network = experiment.__dict__[args.network](network, cropsz, args.batchsize)
+
+# Last softmax layer is always the same
+from lasagne.nonlinearities import softmax
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
 # Output
