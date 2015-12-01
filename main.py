@@ -286,11 +286,11 @@ for epoch in range(start, end):
     p = progress(train_batches)
     i = 1
     frame = numpy.zeros((2,), dtype=numpy.int32)
-    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
+    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)
-        train_loss += train_fn(epoch, flip, frame, batch[0], batch[1])
+        train_loss += train_fn(epoch, flip, frame, inp, res)
         p.update(i)
         i = i+1
         if args.batch_stop != 0 and i > args.batch_stop:
@@ -303,9 +303,9 @@ for epoch in range(start, end):
     i = 0
     train_acc1 = 0
     train_acc5 = 0
-    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
+    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         i = i+1
-        _, acc1, acc5 = val_fn(1, center, batch[0], batch[1])
+        _, acc1, acc5 = val_fn(1, center, inp, res)
         p.update(i)
         train_acc1 += acc1
         train_acc5 += acc5
@@ -319,8 +319,8 @@ for epoch in range(start, end):
     val_acc5 = 0
     p = progress(val_batches)
     i = 0
-    for batch in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
-        loss, acc1, acc5 = val_fn(1, center, batch[0], batch[1])
+    for inp, res in iterate_minibatches(X_val, y_val, args.batchsize, shuffle=False):
+        loss, acc1, acc5 = val_fn(1, center, inp, res)
         val_loss += loss
         val_acc1 += acc1
         val_acc5 += acc5
@@ -367,9 +367,9 @@ if args.labels:
     p = progress(test_batches)
 
     i = 0
-    for batch in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
+    for inp, res in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
         s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = test_fn(1, center, batch[0])[0]
+        pred_out[s:s+args.batchsize, :] = test_fn(1, center, inp)[0]
         i += 1
         p.update(i)
     del pred_out
@@ -386,14 +386,14 @@ if args.confusion:
 
     i = 0
     accn = {}
-    for batch in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
+    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
         s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = debug_fn(1, center, batch[0])
+        pred_out[s:s+args.batchsize, :] = debug_fn(1, center, inp)
         i += 1
         p.update(i)
         topindex = numpy.argsort(-pred_out[s:s+args.batchsize], axis=1)
         for index in range(topindex.shape[0]):
-            confusion = numpy.where(topindex[index] == batch[1][index])[0][0]
+            confusion = numpy.where(topindex[index] == res[index])[0][0]
             accn[confusion] = accn.get(confusion, 0) + 1
         correct = 0
     for index in range(10):
