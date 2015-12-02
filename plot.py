@@ -88,6 +88,9 @@ tlegends = []
 llegends = []
 for i in range(len(training)):
     model = re.sub('\.mdl$', '', args.model[i].name)
+    model = re.sub(os.path.sep + 'epoch-\d+$', '', model)
+    if os.path.sep in model:
+        model = os.path.basename(model)
 
     # exact is s, top5 is o
     # training is '--', validation is ''
