@@ -82,6 +82,7 @@ network = lasagne.layers.InputLayer(
 # import external network
 if args.network not in experiment.__dict__:
     print("No network {} found.".format(args.network))
+    import sys
     sys.exit(1)
 
 # dispatch to user-defined network
