@@ -8,10 +8,6 @@ import os
 import os.path
 import tempfile
 
-import matplotlib
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 parser = argparse.ArgumentParser()
 parser.add_argument('model',
                     type=argparse.FileType('rb'),
@@ -27,8 +23,12 @@ parser.add_argument('-l',
 parser.add_argument('-f', '--format', help='image format', default=None)
 args = parser.parse_args()
 
+import matplotlib
 if args.format is not None:
     matplotlib.use('Agg') # avoid the need for X
+import seaborn as sns
+sns.set(style="ticks", color_codes=True, font_scale=1.5)
+import matplotlib.pyplot as plt
 
 maxe = 0
 training = []
@@ -58,8 +58,6 @@ for model in args.model:
     except EOFError:
         print("Model {} is invalid".format(model.name))
         sys.exit(1)
-
-sns.set(style="ticks", color_codes=True)
 
 fig = plt.figure()
 ax_err = fig.gca()
@@ -99,5 +97,5 @@ ax_err.legend(tlegends, ncol=len(training), prop={'size':8})
 if args.format is None:
     plt.show(fig)
 else:
-    fig.savefig(sys.stdout, format=args.format, dpi=96)
+    fig.savefig(sys.stdout, format=args.format)
     plt.close(fig)
