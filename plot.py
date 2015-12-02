@@ -24,11 +24,6 @@ parser.add_argument('-l',
                     default=False,
                     action='store_true'
                     )
-parser.add_argument('-a',
-                    '--accuracy',
-                    help='give only accuracy plot',
-                    default=False,
-                    action='store_true')
 parser.add_argument('-f', '--format', help='image format', default=None)
 args = parser.parse_args()
 
@@ -67,11 +62,7 @@ for model in args.model:
 sns.set(style="ticks", color_codes=True)
 
 fig = plt.figure()
-if args.accuracy:
-    ax_err = fig.gca()
-else:
-    ax_loss = fig.add_subplot(1, 2, 1)
-    ax_err = fig.add_subplot(1, 2, 2)
+ax_err = fig.gca()
 
 # plot error
 ax_err.grid(True)
@@ -80,14 +71,7 @@ ax_err.set_ylim(0, 1)
 ax_err.yaxis.set_ticks(numpy.arange(0.0, 1.1, 0.1))
 ax_err.set_title('Match error')
 
-if not args.accuracy:
-    # plot loss
-    ax_loss.grid(True)
-    ax_loss.set_xlim(1, maxe+1)
-    ax_loss.set_title('Model loss')
-
 tlegends = []
-llegends = []
 for i in range(len(training)):
     model = re.sub('\.mdl$', '', args.model[i].name)
     model = re.sub(os.path.sep + 'epoch-\d+$', '', model)
@@ -110,19 +94,7 @@ for i in range(len(training)):
     ax_err.plot(range(1, xend), [1-dp[2] for dp in validation[i]], '', color=c, marker='o', markersize=4)
     tlegends.append('{} validation top 5'.format(model))
 
-    if not args.accuracy:
-        # plot loss
-        xend = len(training[i])+1
-        ax_loss.plot(range(1, xend), [dp[0] for dp in training[i]], '--', color=c, marker='o', markersize=4)
-        llegends.append('{} training loss'.format(model))
-
-        xend = len(validation[i])+1
-        ax_loss.plot(range(1, xend), [dp[0] for dp in validation[i]], '', color=c, marker='o', markersize=4)
-        llegends.append('{} validation loss'.format(model))
-
 ax_err.legend(tlegends, ncol=len(training), prop={'size':8})
-if not args.accuracy:
-    ax_loss.legend(llegends)
 
 if args.format is None:
     plt.show(fig)
