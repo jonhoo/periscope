@@ -21,6 +21,8 @@ parser.add_argument('-l',
                     action='store_true'
                     )
 parser.add_argument('-f', '--format', help='image format', default=None)
+parser.add_argument('-n', '--names', help='set experiment names', nargs="+")
+parser.add_argument('-t', '--title', help='plot title', default='Match error')
 args = parser.parse_args()
 
 import matplotlib
@@ -67,14 +69,17 @@ ax_err.grid(True)
 ax_err.set_xlim(1, maxe+1)
 ax_err.set_ylim(0, 1)
 ax_err.yaxis.set_ticks(numpy.arange(0.0, 1.1, 0.1))
-ax_err.set_title('Match error')
+ax_err.set_title(args.title)
 
 tlegends = []
 for i in range(len(training)):
-    model = re.sub('\.mdl$', '', args.model[i].name)
-    model = re.sub(os.path.sep + 'epoch-\d+$', '', model)
-    if os.path.sep in model:
-        model = os.path.basename(model)
+    if args.names and i < len(args.names):
+        model = args.names[i]
+    else:
+        model = re.sub('\.mdl$', '', args.model[i].name)
+        model = re.sub(os.path.sep + 'epoch-\d+$', '', model)
+        if os.path.sep in model:
+            model = os.path.basename(model)
 
     # exact is s, top5 is o
     # training is '--', validation is ''
@@ -82,17 +87,17 @@ for i in range(len(training)):
     xend = len(training[i])+1
     c = ax_err.plot(range(1, xend), [1-dp[1] for dp in training[i]], '--', marker='s', markersize=4)
     c = c[0].get_color()
-    tlegends.append('{} training exact'.format(model))
+    tlegends.append('{}, training, exact'.format(model))
     ax_err.plot(range(1, xend), [1-dp[2] for dp in training[i]], '--', color=c, marker='o', markersize=4)
-    tlegends.append('{} training top 5'.format(model))
+    tlegends.append('{}, training, top 5'.format(model))
 
     xend = len(validation[i])+1
     ax_err.plot(range(1, xend), [1-dp[1] for dp in validation[i]], '', color=c, marker='s', markersize=4)
-    tlegends.append('{} validation exact'.format(model))
+    tlegends.append('{}, validation, exact'.format(model))
     ax_err.plot(range(1, xend), [1-dp[2] for dp in validation[i]], '', color=c, marker='o', markersize=4)
-    tlegends.append('{} validation top 5'.format(model))
+    tlegends.append('{}, validation, top 5'.format(model))
 
-ax_err.legend(tlegends, ncol=len(training), prop={'size':8})
+ax_err.legend(tlegends, ncol=len(training))
 
 if args.format is None:
     plt.show(fig)
