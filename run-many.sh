@@ -5,7 +5,7 @@ run() {
 	git --no-pager diff --color
 	make solve
 	rm -rf "exp-${ex}"
-	mv exp-large "exp-${ex}"
+	mv "$(ls -dt exp-* | head -n1)" "exp-${ex}"
 }
 
 shutdown="no"
