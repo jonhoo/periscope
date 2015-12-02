@@ -9,7 +9,6 @@ import os.path
 import tempfile
 
 import matplotlib
-matplotlib.use('Agg') # avoid the need for X
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -30,8 +29,11 @@ parser.add_argument('-a',
                     help='give only accuracy plot',
                     default=False,
                     action='store_true')
-parser.add_argument('-f', '--format', help='image format', default='png')
+parser.add_argument('-f', '--format', help='image format', default=None)
 args = parser.parse_args()
+
+if args.format is not None:
+    matplotlib.use('Agg') # avoid the need for X
 
 maxe = 0
 training = []
@@ -122,5 +124,8 @@ ax_err.legend(tlegends, ncol=len(training), prop={'size':8})
 if not args.accuracy:
     ax_loss.legend(llegends)
 
-fig.savefig(sys.stdout, format=args.format, dpi=96)
-plt.close(fig)
+if args.format is None:
+    plt.show(fig)
+else:
+    fig.savefig(sys.stdout, format=args.format, dpi=96)
+    plt.close(fig)
