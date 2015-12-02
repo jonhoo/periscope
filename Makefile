@@ -3,7 +3,7 @@ DK_DATA ?= ./mp-dev_kit
 MP_DATA ?= ./mp-data
 VENV = env/.built
 PYTHON = env/bin/python3
-NET ?= base
+NET ?= slim
 
 RAW = $(MMAP_FILES)/full/train.labels.db \
       $(MMAP_FILES)/full/train.images.db \
