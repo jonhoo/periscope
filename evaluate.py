@@ -39,18 +39,12 @@ task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
 input_var = T.tensor4('X')
 
-# parameters
-flip_var = T.iscalar('f')
-crop_var = T.ivector('c') # ycrop, xcrop
-center = numpy.zeros((2,), dtype=numpy.int32)
-center.fill(numpy.floor((imsz - cropsz)/2))
-
-# crop+flip
-cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
-prepared = cropped[:,:,:,::flip_var]
+# center crop w/o flipping
+center = int(numpy.floor((imsz - cropsz)/2))
+cropped = input_var[:, :, center:center+cropsz, center:center+cropsz]
 
 # input layer is always the same
-network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), prepared)
+network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), cropped)
 
 # import external network
 if args.network not in experiment.__dict__:
@@ -74,7 +68,7 @@ saveparams = lasagne.layers.get_all_params(network)
 
 # Create an evaluation expression for testing.
 top5_pred = T.argsort(lasagne.layers.get_output(network, deterministic=True))[:, -5:][:, ::-1]
-test_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [top5_pred])
+test_fn = theano.function([input_var], [top5_pred])
 
 def iterate_minibatches(inputs):
     global args
