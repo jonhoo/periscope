@@ -128,7 +128,7 @@ test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [test_loss, test_1_acc, test_5_acc])
 
 # a function for test output
-top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
+top5_pred = T.argsort(test_prediction)[:, -5:][:, ::-1]
 test_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [top5_pred])
 debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
 
