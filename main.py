@@ -24,8 +24,6 @@ parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many e
 parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default=None)
 parser.add_argument('-n', '--network', help='name of network experiment', default='base')
 parser.add_argument('--limit', type=int, help='limit analyses to this many images', default=None)
-parser.add_argument('--labels', help='record test set predictions to this file', action='store_true')
-parser.set_defaults(labels=False)
 parser.add_argument('--no-plot', help='skip the plot', action='store_false')
 parser.set_defaults(plot=True)
 parser.add_argument('--confusion', help='compute confusion stats', action='store_true')
@@ -50,11 +48,6 @@ cats = numpy.max(y_train)+1
 subtask("Loading validation set")
 y_val = numpy.memmap(os.path.join(args.tagged, "val.labels.db"), dtype=numpy.int32, mode='r')
 X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_val), 3, imsz, imsz))
-
-if args.labels:
-    subtask("Loading test set")
-    y_test = numpy.memmap(os.path.join(args.tagged, "test.labels.db"), dtype=numpy.int32, mode='r')
-    X_test = numpy.memmap(os.path.join(args.tagged, "test.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
@@ -127,9 +120,7 @@ test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 # compile a second function computing the validation loss and accuracy:
 val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [test_loss, test_1_acc, test_5_acc])
 
-# a function for test output
-top5_pred = T.argsort(test_prediction)[:, -5:][:, ::-1]
-test_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [top5_pred])
+# a function for debug output
 debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
@@ -350,28 +341,6 @@ for epoch in range(start, end):
     ))
 
 replot()
-
-if args.labels:
-    section("Evaluation")
-    task("Evaluating performance on test data set")
-    efile = open(os.path.join(args.outdir, 'labels.db'), 'wb+')
-    cases = len(X_test) if not args.limit else min(args.limit, len(X_test))
-    pred_out = numpy.memmap(efile, dtype=numpy.int32, shape=(cases, 5))
-
-    test_batches = len(range(0, cases, args.batchsize))
-    p = progress(test_batches)
-    i = 0
-    for inp, res in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
-        s = i * args.batchsize
-        if s + args.batchsize > pred_out.shape[0]:
-            inp = inp[:pred_out.shape[0] - s]
-        pred_out[s:s+args.batchsize, :] = test_fn(inp)[0]
-        i += 1
-        p.update(i)
-        if i == test_batches:
-            break
-    del pred_out
-    efile.close()
 
 def make_confusion_db(name, fname, X, Y):
     global args
