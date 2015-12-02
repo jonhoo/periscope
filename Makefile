@@ -37,7 +37,7 @@ $(IMDATA): $(IMTGZ)
 	tar mxvzf $< -C $(MP_DATA)
 
 solve-small: $(VENV) $(SRAW) Makefile
-	$(PYTHON) main.py -o exp-small -e1 -b10 -s1 $(MMAP_FILES)/small
+	$(PYTHON) main.py --network $(NET) -e1 -b10 -s1 --tagged $(MMAP_FILES)/small
 
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
