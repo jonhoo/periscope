@@ -386,10 +386,11 @@ if args.confusion:
 
 # Divides the image into 16x16 overlapping squares of 23x23 pixels, each
 # offset 7 pixels from the previous
+res = 16
+pix = 23
+st = 7
+noise = numpy.random.RandomState(123).normal(size=[pix-4, pix-4])
 def make_response_probe(image):
-    res = 16
-    pix = 23
-    st = 7
     result = numpy.tile(image, (res*res, 1, 1, 1))
     for x in range(res):
         for y in range(res):
@@ -398,35 +399,45 @@ def make_response_probe(image):
                         result[x + y * res, c,
                                y*st:y*st+pix, x*st:x*st+pix])
                 anti = (avg + 0.5) * numpy.ones([pix, pix])
-                noise = numpy.random.normal(size=[pix-4, pix-4])
                 box = anti
                 box[2:pix-2,2:pix-2] += noise + 10
                 box = box % 1
-                # noise = (noise + anti) % 1
-                # noise = avg * numpy.ones([pix, pix])
-                # noise = anti * numpy.ones([pix, pix])
                 result[x + y * res, c,
                        y*st:y*st+pix, x*st:x*st+pix] = box
     return result
 
-def make_response_file(name, fname, X, Y):
+def make_response_file(name, fname, cname, X, Y, use_first=False):
     global args
     task("Evaluating response regions on %s" % name)
     assert args.batchsize == 256
     cases = len(X) if not args.limit else min(args.limit, len(X))
+    if use_first:
+        cfile = open(os.path.join(args.outdir, cname), 'r')
+        pred = numpy.memmap(cfile, dtype=numpy.float32, mode='r')
+        pred.shape = (pred.shape[0] / cats, cats)
+        topindex = numpy.argsort(-pred, axis=1)
     rfile = open(os.path.join(args.outdir, fname), 'wb+')
     resp_out = numpy.memmap(rfile, dtype=numpy.float32,
             shape=(cases, 256), mode='w+')
     p = progress(cases)
     for index in range(cases):
         probe = make_response_probe(X[index])
-        correct = Y[index]
-        resp_out[index] = debug_fn(probe)[:,correct]
+        if use_first:
+            toview = topindex[index][0]
+        else:
+            toview = Y[index]
+        resp_out[index] = debug_fn(probe)[:,toview]
         p.update(index + 1)
     del resp_out
     rfile.close()
 
 if args.response:
     section("Visualization")
-    make_response_file('validation set', 'val.response.db', X_val, y_val)
-    make_response_file('training set', 'train.response.db', X_train, y_train)
+    make_response_file('validation set',
+        'val.response.db', 'val.confusion.db', X_val, y_val)
+    make_response_file('training set',
+        'train.response.db', 'train.confusion.db', X_train, y_train)
+    make_response_file('validation set',
+        'val.topresponse.db', 'val.confusion.db', X_val, y_val, True)
+    make_response_file('training set',
+        'train.topresponse.db', 'train.confusion.db', X_train, y_train, True)

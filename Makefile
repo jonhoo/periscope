@@ -4,6 +4,8 @@ MP_DATA ?= ./mp-data
 VENV = env/.built
 PYTHON = env/bin/python3
 NET ?= slim
+NET ?= base
+LIMIT ?= 0
 
 RAW = $(MMAP_FILES)/full/train.labels.db \
       $(MMAP_FILES)/full/train.images.db \
@@ -50,14 +52,16 @@ analyze: $(VENV) $(RAW) Makefile
 		--labels \
 		--confusion \
 		--response \
+                --limit $(LIMIT) \
 		--tagged $(MMAP_FILES)/full
+
 
 view: $(VENV)
 	$(PYTHON) view.py \
                 --tagged $(MMAP_FILES)/full \
                 -d $(DK_DATA) \
                 --serve \
-                --outdir exp-large
+                --network $(NET)
 
 # these technically depend on $(PYTHON), but we don't want to add that
 # dependency, because then we have to re-prepare if we ever change env.sh
