@@ -267,6 +267,9 @@ for epoch in range(start, end):
     val_batches = len(range(0, len(X_val), args.batchsize))
     train_test_batches = val_batches
 
+    if args.batch_stop != 0:
+        train_batches = min(train_batches, args.batch_stop)
+
     # In each epoch, we do a pass over minibatches of the training data:
     train_loss = 0
     p = progress(train_batches)
@@ -279,8 +282,7 @@ for epoch in range(start, end):
         train_loss += train_fn(epoch, flip, frame, inp, res)
         p.update(i)
         i = i+1
-        if args.batch_stop != 0 and i > args.batch_stop:
-            p.update(train_batches)
+        if i > train_batches:
             break
 
     # Only do forward pass on a subset of the training data
