@@ -92,13 +92,13 @@ loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean(
 loss += regularize_network_params(network, l2) * 1e-3
 
 # create parameter update expressions
-params = lasagne.layers.get_all_params(network, trainable=True)
-saveparams = lasagne.layers.get_all_params(network)
-updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
+all_params = lasagne.layers.get_all_params(network)
+scaled_grad = lasagne.updates.total_norm_constraint(T.grad(loss, all_params), 5)
+updates = lasagne.updates.nesterov_momentum(scaled_grad, all_params, learning_rate=learning_rate, momentum=args.momentum)
 subtask("parameter count {} ({} trainable) in {} arrays".format(
         lasagne.layers.count_params(network),
         lasagne.layers.count_params(network, trainable=True),
-        len(saveparams)))
+        len(all_params)))
 
 # compile training function that updates parameters and returns training loss
 train_fn = theano.function([learning_rate, flip_var, crop_var, input_var, target_var], loss, updates=updates)
@@ -240,9 +240,8 @@ try:
         training = pickle.load(lfile)
         validation = pickle.load(lfile)
         task("Restoring parameter values")
-        fileparams = saveparams if formatver >= 1 else params
-        assert len(fileparams) == len(state)
-        for p, v in zip(fileparams, state):
+        assert len(all_params) == len(state)
+        for p, v in zip(all_params, state):
             p.set_value(v)
         subtask("Resuming at epoch {}".format(epoch+1))
         start = epoch+1
@@ -322,7 +321,7 @@ for epoch in range(start, end):
         sfile.truncate()
         formatver = 1
         pickle.dump(formatver, sfile)
-        pickle.dump([p.get_value() for p in saveparams], sfile)
+        pickle.dump([p.get_value() for p in all_params], sfile)
         pickle.dump(epoch, sfile)
         pickle.dump(training, sfile)
         pickle.dump(validation, sfile)
