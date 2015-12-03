@@ -52,9 +52,7 @@ X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.flo
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
 learning_rates = numpy.logspace(-1.5, -4, 30, dtype=theano.config.floatX)
-learning_rates_var = theano.shared(learning_rates)
-learning_rate = theano.shared(learning_rates[0])
-epochi = T.iscalar('e')
+learning_rate = T.scalar('l')
 input_var = T.tensor4('X')
 target_var = T.ivector('y')
 
@@ -97,14 +95,13 @@ loss += regularize_network_params(network, l2) * 1e-3
 params = lasagne.layers.get_all_params(network, trainable=True)
 saveparams = lasagne.layers.get_all_params(network)
 updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
-updates[learning_rate] = learning_rates_var[epochi]
 subtask("parameter count {} ({} trainable) in {} arrays".format(
         lasagne.layers.count_params(network),
         lasagne.layers.count_params(network, trainable=True),
         len(saveparams)))
 
 # compile training function that updates parameters and returns training loss
-train_fn = theano.function([epochi, flip_var, crop_var, input_var, target_var], loss, updates=updates)
+train_fn = theano.function([learning_rate, flip_var, crop_var, input_var, target_var], loss, updates=updates)
 
 # Create a loss expression for validation/testing. The crucial difference here
 # is that we do a deterministic forward pass through the network, disabling
@@ -247,8 +244,6 @@ try:
         assert len(fileparams) == len(state)
         for p, v in zip(fileparams, state):
             p.set_value(v)
-        learning_rate.set_value(
-               learning_rates[min(epoch, len(learning_rates) - 1)])
         subtask("Resuming at epoch {}".format(epoch+1))
         start = epoch+1
 except EOFError:
@@ -279,7 +274,7 @@ for epoch in range(start, end):
         flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)
-        train_loss += train_fn(epoch, flip, frame, inp, res)
+        train_loss += train_fn(learning_rates[epoch], flip, frame, inp, res)
         p.update(i)
         i = i+1
         if i > train_batches:
