@@ -4,7 +4,6 @@ MP_DATA ?= ./mp-data
 VENV = env/.built
 PYTHON = env/bin/python3
 NET ?= slim
-NET ?= base
 LIMIT ?= 0
 
 RAW = $(MMAP_FILES)/full/train.labels.db \
