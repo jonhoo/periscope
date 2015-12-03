@@ -51,7 +51,7 @@ X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.flo
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
-learning_rates = numpy.logspace(-0.5, -3, 30, dtype=theano.config.floatX)
+learning_rates = numpy.logspace(0, -2, 30, dtype=theano.config.floatX)
 learning_rate = T.scalar('l')
 input_var = T.tensor4('X')
 target_var = T.ivector('y')
@@ -94,7 +94,7 @@ loss += regularize_network_params(network, l2) * 1e-3
 # create parameter update expressions
 params = lasagne.layers.get_all_params(network, trainable=True)
 all_params = lasagne.layers.get_all_params(network)
-scaled_grad = lasagne.updates.total_norm_constraint(T.grad(loss, params), 5)
+scaled_grad = lasagne.updates.total_norm_constraint(T.grad(loss, params), 1)
 updates = lasagne.updates.nesterov_momentum(scaled_grad, params, learning_rate=learning_rate, momentum=args.momentum)
 subtask("parameter count {} ({} trainable) in {} arrays".format(
         lasagne.layers.count_params(network),
