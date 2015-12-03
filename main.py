@@ -88,7 +88,7 @@ prediction = lasagne.layers.get_output(network)
 
 # create loss function
 from lasagne.regularization import regularize_network_params, l2, l1
-loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean()
+loss = T.mean(lasagne.objectives.categorical_crossentropy(prediction, target_var))
 loss += regularize_network_params(network, l2) * 1e-3
 
 # create parameter update expressions
