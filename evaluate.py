@@ -127,5 +127,5 @@ for i in range(len(predictions)):
     if args.labels:
         cats = "\t".join([categories[ci] for ci in predictions[i]])
     else:
-        cats = " ".join([str(c) for c in predictions[i]])
+        cats = " ".join([str(int(c)) for c in predictions[i]])
     print("{} {}".format(filenames[i], cats))
