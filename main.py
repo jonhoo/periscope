@@ -92,9 +92,10 @@ loss = T.mean(lasagne.objectives.categorical_crossentropy(prediction, target_var
 loss += regularize_network_params(network, l2) * 1e-3
 
 # create parameter update expressions
+params = lasagne.layers.get_all_params(network, trainable=True)
 all_params = lasagne.layers.get_all_params(network)
-scaled_grad = lasagne.updates.total_norm_constraint(T.grad(loss, lasagne.layers.get_all_params(network, trainable=True)), 5)
-updates = lasagne.updates.nesterov_momentum(scaled_grad, all_params, learning_rate=learning_rate, momentum=args.momentum)
+scaled_grad = lasagne.updates.total_norm_constraint(T.grad(loss, params), 5)
+updates = lasagne.updates.nesterov_momentum(scaled_grad, params, learning_rate=learning_rate, momentum=args.momentum)
 subtask("parameter count {} ({} trainable) in {} arrays".format(
         lasagne.layers.count_params(network),
         lasagne.layers.count_params(network, trainable=True),
