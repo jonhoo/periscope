@@ -93,7 +93,7 @@ loss += regularize_network_params(network, l2) * 1e-3
 
 # create parameter update expressions
 all_params = lasagne.layers.get_all_params(network)
-scaled_grad = lasagne.updates.total_norm_constraint(T.grad(loss, all_params), 5)
+scaled_grad = lasagne.updates.total_norm_constraint(T.grad(loss, lasagne.layers.get_all_params(network, trainable=True)), 5)
 updates = lasagne.updates.nesterov_momentum(scaled_grad, all_params, learning_rate=learning_rate, momentum=args.momentum)
 subtask("parameter count {} ({} trainable) in {} arrays".format(
         lasagne.layers.count_params(network),
