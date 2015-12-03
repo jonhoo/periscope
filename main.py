@@ -51,7 +51,7 @@ X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.flo
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
-learning_rates = numpy.logspace(-1.5, -4, 30, dtype=theano.config.floatX)
+learning_rates = numpy.logspace(-0.5, -3, 30, dtype=theano.config.floatX)
 learning_rate = T.scalar('l')
 input_var = T.tensor4('X')
 target_var = T.ivector('y')
