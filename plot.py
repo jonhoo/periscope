@@ -69,7 +69,7 @@ for model in args.model:
 if not args.column:
     fig = plt.figure()
 else:
-    fig = plt.figure(figsize=(3.25, 4))
+    fig = plt.figure(figsize=(3.25, 2))
 ax_err = fig.gca()
 
 # plot error
