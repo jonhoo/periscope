@@ -48,7 +48,6 @@ solve: $(VENV) $(RAW) Makefile
 analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
                 --network $(NET) \
-		--labels \
 		--confusion \
 		--response \
                 --limit $(LIMIT) \
