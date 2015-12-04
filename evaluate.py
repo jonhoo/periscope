@@ -20,8 +20,10 @@ parser.add_argument('-t', '--tagged', help='path to directory containing prepare
 parser.add_argument('-n', '--network', help='name of network experiment', default='base')
 parser.add_argument('-m', '--model', type=argparse.FileType('rb'), help='trained model to evaluate', required=True)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
+parser.add_argument('-s', '--set', help='image set to evaluate on', choices=['test', 'val'], default='test')
 parser.add_argument('-l', '--labels', action='store_true', help='output category labels', default=False)
 parser.add_argument('-d', '--devkit', help='devkit directory containing categories.txt', default='mp-dev_kit')
+parser.add_argument('-c', '--combine', help='combine the output of multiple cropflips', default=False, action='store_true')
 args = parser.parse_args()
 
 imsz = 128
@@ -32,16 +34,19 @@ task("Loading data")
 subtask("Loading categories")
 cats = numpy.max(numpy.memmap(os.path.join(args.tagged, "train.labels.db"), dtype=numpy.int32, mode='r'))+1
 subtask("Loading test set")
-y_test = numpy.memmap(os.path.join(args.tagged, "test.labels.db"), dtype=numpy.int32, mode='r')
-X_test = numpy.memmap(os.path.join(args.tagged, "test.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
+y_test = numpy.memmap(os.path.join(args.tagged, "{}.labels.db".format(args.set)), dtype=numpy.int32, mode='r')
+X_test = numpy.memmap(os.path.join(args.tagged, "{}.images.db".format(args.set)), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
 input_var = T.tensor4('X')
 
-# center crop w/o flipping
-center = int(numpy.floor((imsz - cropsz)/2))
-cropped = input_var[:, :, center:center+cropsz, center:center+cropsz]
+# parameters
+crop_var = T.ivector('c') # ycrop, xcrop
+center = numpy.floor((imsz - cropsz)/2)
+
+# crop+flip
+cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
 
 # input layer is always the same
 network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), cropped)
@@ -67,8 +72,7 @@ params = lasagne.layers.get_all_params(network, trainable=True)
 saveparams = lasagne.layers.get_all_params(network)
 
 # Create an evaluation expression for testing.
-top5_pred = T.argsort(lasagne.layers.get_output(network, deterministic=True))[:, -5:][:, ::-1]
-test_fn = theano.function([input_var], [top5_pred])
+test_fn = theano.function([crop_var, input_var], [lasagne.layers.get_output(network, deterministic=True)])
 
 def iterate_minibatches(inputs):
     global args
@@ -105,11 +109,36 @@ predictions = numpy.zeros((len(X_test), 5))
 test_batches = len(range(0, cases, args.batchsize))
 p = progress(test_batches)
 i = 0
+frame = numpy.zeros((2,), dtype=numpy.int32)
+frame[0] = center
+frame[1] = center
+_preds = numpy.zeros((2*3*3, args.batchsize, cats))
 for inp in iterate_minibatches(X_test):
     s = i * args.batchsize
     if s + args.batchsize > predictions.shape[0]:
         inp = inp[:predictions.shape[0] - s]
-    predictions[s:s+args.batchsize, :] = test_fn(inp)[0]
+
+    if not args.combine:
+        predictions[s:s+len(inp), :] = numpy.argsort(test_fn(frame, inp)[0])[:, -5:][:, ::-1]
+    else:
+        config = 0
+        _preds.fill(0)
+        for flip in [False, True]:
+            if flip:
+                # flip once here instead of having to flip multiple times on the GPU
+                inp = inp[:, :, :, ::-1]
+            for xcrop in [0, center, imsz - cropsz - 1]:
+                for ycrop in [0, center, imsz - cropsz - 1]:
+                    frame[0] = ycrop
+                    frame[1] = xcrop
+                    _preds[config, :len(inp), :] = test_fn(frame, inp)[0]
+                    config += 1
+
+        # take median across configurations
+        # pick top 5 categories
+        # last category is highest probability
+        predictions[s:s+len(inp), :] = numpy.argsort(numpy.median(_preds, axis=0))[:len(inp), -5:][:, ::-1]
+
     i += 1
     p.update(i)
 
@@ -129,3 +158,8 @@ for i in range(len(predictions)):
     else:
         cats = " ".join([str(int(c)) for c in predictions[i]])
     print("{} {}".format(filenames[i], cats))
+
+if args.set != 'test':
+    top1 = numpy.mean(numpy.equal(predictions[:, 0], y_test))
+    top5 = numpy.mean(numpy.any(numpy.equal(predictions[:, 0:5], y_test.reshape(-1, 1)), axis=1))
+    task("Evaluation accuracy: exact: {}, top-5: {}".format(top1, top5))
