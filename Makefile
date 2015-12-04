@@ -42,7 +42,7 @@ $(IMTGZ):
 	curl "http://6.869.csail.mit.edu/fa15/challenge/data.tar.gz" -o $@
 	touch -d '2015-09-01' $@ # avoid rebuilds
 
-.PRECIOUS: $(IMTGZ)
+.PRECIOUS: $(IMTGZ) $(RAW) $(SRAW) $(GRAW) $(BRAW)
 
 $(IMDATA): $(IMTGZ)
 	tar mxvzf $< -C $(MP_DATA)
