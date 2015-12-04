@@ -102,7 +102,7 @@ for p, v in zip(fileparams, state):
     p.set_value(v)
 
 section("Evaluation")
-task("Evaluating performance on test data set")
+task("Evaluating performance on {} data set".format(args.set))
 cases = len(X_test)
 predictions = numpy.zeros((len(X_test), 5))
 
