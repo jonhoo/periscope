@@ -160,7 +160,6 @@ for i in range(len(predictions)):
     print("{} {}".format(filenames[i], cats))
 
 if args.set != 'test':
-    y_val = y_test.dimshuffle(0, 'x')
-    top1 = numpy.mean(numpy.any(numpy.equal(predictions[:, 0:0], y_val), axis=1))
-    top5 = numpy.mean(numpy.any(numpy.equal(predictions[:, 0:5], y_val), axis=1))
+    top1 = numpy.mean(numpy.equal(predictions[:, 0], y_test))
+    top5 = numpy.mean(numpy.any(numpy.equal(predictions[:, 0:5], y_test), axis=1))
     print("top1: {}, top5: {}".format(top1, top5))
