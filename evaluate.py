@@ -39,9 +39,11 @@ task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
 input_var = T.tensor4('X')
 
-# center crop w/o flipping
-center = int(numpy.floor((imsz - cropsz)/2))
-cropped = input_var[:, :, center:center+cropsz, center:center+cropsz]
+# parameters
+crop_var = T.ivector('c') # ycrop, xcrop
+
+# crop+flip
+cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
 
 # input layer is always the same
 network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), cropped)
@@ -67,8 +69,7 @@ params = lasagne.layers.get_all_params(network, trainable=True)
 saveparams = lasagne.layers.get_all_params(network)
 
 # Create an evaluation expression for testing.
-top5_pred = T.argsort(lasagne.layers.get_output(network, deterministic=True))[:, -5:][:, ::-1]
-test_fn = theano.function([input_var], [top5_pred])
+test_fn = theano.function([crop_var, input_var], [lasagne.layers.get_output(network, deterministic=True)])
 
 def iterate_minibatches(inputs):
     global args
@@ -109,7 +110,25 @@ for inp in iterate_minibatches(X_test):
     s = i * args.batchsize
     if s + args.batchsize > predictions.shape[0]:
         inp = inp[:predictions.shape[0] - s]
-    predictions[s:s+args.batchsize, :] = test_fn(inp)[0]
+
+    config = 0
+    _preds = numpy.zeros((2*3*3, len(inp), cats))
+    frame = numpy.zeros((2,), dtype=numpy.int32)
+    for flip in [False, True]:
+        if flip:
+            # flip once here instead of having to flip multiple times on the GPU
+            inp = inp[:, :, :, ::-1]
+        for xcrop in [0, numpy.floor((imsz - cropsz)/2), imsz - cropsz - 1]:
+            for ycrop in [0, numpy.floor((imsz - cropsz)/2), imsz - cropsz - 1]:
+                frame[0] = ycrop
+                frame[1] = xcrop
+                _preds[config, :, :] = test_fn(frame, inp)[0]
+                config += 1
+
+    # take median across configurations
+    # pick top 5 categories
+    # last category is highest probability
+    predictions[s:s+args.batchsize, :] = numpy.argsort(numpy.median(_preds, axis=0))[:, -5:][:, ::-1]
     i += 1
     p.update(i)
 
