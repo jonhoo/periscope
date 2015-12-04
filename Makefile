@@ -86,8 +86,8 @@ $(GRAW): $(FOCUS)/good/$(LAST) prepare.py
 	$(PYTHON) prepare.py $(FOCUS)/good/ $(DK_DATA) $(MMAP_FILES)/focus-good
 
 $(BRAW): $(FOCUS)/bad/$(LAST) prepare.py
-	mkdir -p $(MMAP_FILES)/focus-good
-	$(PYTHON) prepare.py $(FOCUS)/good/ $(DK_DATA) $(MMAP_FILES)/focus-good
+	mkdir -p $(MMAP_FILES)/focus-bad
+	$(PYTHON) prepare.py $(FOCUS)/bad/ $(DK_DATA) $(MMAP_FILES)/focus-bad
 
 clean:
 	rm -f $(RAW) $(SRAW) env
