@@ -161,5 +161,5 @@ for i in range(len(predictions)):
 
 if args.set != 'test':
     top1 = numpy.mean(numpy.equal(predictions[:, 0], y_test))
-    top5 = numpy.mean(numpy.any(numpy.equal(predictions[:, 0:5], y_test), axis=1))
+    top5 = numpy.mean(numpy.any(numpy.equal(predictions[:, 0:5], y_test.reshape(-1, 1)), axis=1))
     print("top1: {}, top5: {}".format(top1, top5))
