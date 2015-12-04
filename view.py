@@ -89,49 +89,58 @@ def create_response_images(name, subset):
         tr3 = numpy.tile(tr.reshape([128, 128, 1]), [1, 1, 3])
         im = misc.imread(os.path.join(args.images, filenames[index]))
         # the "see" image shows where the response was high.
-        seeim = numpy.multiply(im, r3)
-        seename = os.path.join(args.outdir, 'resp', 'see', filenames[index])
-        os.makedirs(os.path.dirname(seename), exist_ok=True)
-        misc.imsave(seename, seeim)
-        # the "tsee" image shows where the response was high.
-        tseeim = numpy.multiply(im, tr3)
-        tseename = os.path.join(args.outdir, 'resp', 'tsee', filenames[index])
-        os.makedirs(os.path.dirname(tseename), exist_ok=True)
-        misc.imsave(tseename, tseeim)
-        # the "ignore" image shows where the response was low.
-        ignoreim = numpy.multiply(im, 1 - r3)
-        ignorename = os.path.join(
-                args.outdir, 'resp', 'ignore', filenames[index])
-        os.makedirs(os.path.dirname(ignorename), exist_ok=True)
-        misc.imsave(ignorename, ignoreim)
+        seegim = numpy.multiply(im, r3)
+        seegname = os.path.join(args.outdir, 'resp', 'seeg', filenames[index])
+        os.makedirs(os.path.dirname(seegname), exist_ok=True)
+        misc.imsave(seegname, seegim)
+        # the "seec" image shows where the response was high.
+        seecim = numpy.multiply(im, tr3)
+        seecname = os.path.join(args.outdir, 'resp', 'seec', filenames[index])
+        os.makedirs(os.path.dirname(seecname), exist_ok=True)
+        misc.imsave(seecname, seecim)
+        # the "ignoreg" image shows where the response was low.
+        ignoregim = numpy.multiply(im, 1 - r3)
+        ignoregname = os.path.join(
+                args.outdir, 'resp', 'ignoregg', filenames[index])
+        os.makedirs(os.path.dirname(ignoregname), exist_ok=True)
+        misc.imsave(ignoregname, ignoregim)
         # the "tignore" image shows where the response was low.
-        tignoreim = numpy.multiply(im, 1 - tr3)
-        tignorename = os.path.join(
-                args.outdir, 'resp', 'tignore', filenames[index])
-        os.makedirs(os.path.dirname(tignorename), exist_ok=True)
-        misc.imsave(tignorename, tignoreim)
+        ignorecim = numpy.multiply(im, 1 - tr3)
+        ignorecname = os.path.join(
+                args.outdir, 'resp', 'ignorec', filenames[index])
+        os.makedirs(os.path.dirname(ignorecname), exist_ok=True)
+        misc.imsave(ignorecname, ignorecim)
         # use a blurred image for visualization
         blurred = numpy.zeros(im.shape)
         for c in range(3):
             blurred[:,:,c] = gaussian_filter(im[:,:,c], sigma=12)
         # the "good" image blurs the ignore image and shows the see image
         blurignore = numpy.multiply(blurred, 1 - r3)
-        goodim = blurignore + seeim
-        goodname = os.path.join(args.outdir, 'resp', 'good', filenames[index])
-        os.makedirs(os.path.dirname(goodname), exist_ok=True)
-        misc.imsave(goodname, goodim)
-        # the "bad" image shows where the image is confused
+        goalim = blurignore + seegim
+        goalname = os.path.join(args.outdir, 'resp', 'goal', filenames[index])
+        os.makedirs(os.path.dirname(goalname), exist_ok=True)
+        misc.imsave(goalname, goalim)
+        # the "notgoal" image shows where the image is confused
         blursee = numpy.multiply(blurred, r3)
-        badim = blursee + ignoreim
-        badname = os.path.join(args.outdir, 'resp', 'bad', filenames[index])
-        os.makedirs(os.path.dirname(badname), exist_ok=True)
-        misc.imsave(badname, badim)
-        # the "pick" image shows where the image picked a response
+        notgoalim = blursee + ignoregim
+        notgoalname = os.path.join(
+                args.outdir, 'resp', 'notgoal', filenames[index])
+        os.makedirs(os.path.dirname(notgoalname), exist_ok=True)
+        misc.imsave(notgoalname, notgoalim)
+        # the "chosen" image shows where the image chosened a response
         blurtignore = numpy.multiply(blurred, 1 - tr3)
-        pickim = blurtignore + tseeim
-        pickname = os.path.join(args.outdir, 'resp', 'pick', filenames[index])
-        os.makedirs(os.path.dirname(pickname), exist_ok=True)
-        misc.imsave(pickname, pickim)
+        chosenim = blurtignore + seecim
+        chosenname = os.path.join(
+                args.outdir, 'resp', 'chosen', filenames[index])
+        os.makedirs(os.path.dirname(chosenname), exist_ok=True)
+        misc.imsave(chosenname, chosenim)
+        # the "notchosen" image shows where the image notchosened a response
+        blurtignore = numpy.multiply(blurred, tr3)
+        notchosenim = blurtignore + ignorecim
+        notchosenname = os.path.join(
+                args.outdir, 'resp', 'notchosen', filenames[index])
+        os.makedirs(os.path.dirname(notchosenname), exist_ok=True)
+        misc.imsave(notchosenname, notchosenim)
 
         p.update(index + 1)
 
