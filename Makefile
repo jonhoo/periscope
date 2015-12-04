@@ -11,20 +11,21 @@ RAW = $(MMAP_FILES)/full/train.labels.db \
       $(MMAP_FILES)/full/train.images.db \
       $(MMAP_FILES)/full/train.filenames.txt \
       #$(MMAP_FILES)/full/val.images.db \
-      #$(MMAP_FILES)/full/test.images.db \
+      #$(MMAP_FILES)/full/test.images.db
 
 BRAW = $(MMAP_FILES)/focus-bad/train.labels.db \
        $(MMAP_FILES)/focus-bad/train.images.db \
-       $(MMAP_FILES)/focus-bad/train.filenames.txt \
+       $(MMAP_FILES)/focus-bad/train.filenames.txt
+
 GRAW = $(MMAP_FILES)/focus-good/train.labels.db \
        $(MMAP_FILES)/focus-good/train.images.db \
-       $(MMAP_FILES)/focus-good/train.filenames.txt \
+       $(MMAP_FILES)/focus-good/train.filenames.txt
 
 SRAW = $(MMAP_FILES)/small/train.labels.db \
        $(MMAP_FILES)/small/train.images.db \
        $(MMAP_FILES)/small/train.filenames.txt \
        #$(MMAP_FILES)/small/val.images.db \
-       #$(MMAP_FILES)/small/test.images.db \
+       #$(MMAP_FILES)/small/test.images.db
 
 LAST = train/y/yard/00001000.jpg
 IMTGZ = $(MMAP_FILES)/data.tar.gz
