@@ -111,6 +111,7 @@ i = 0
 frame = numpy.zeros((2,), dtype=numpy.int32)
 frame[0] = center
 frame[1] = center
+_preds = numpy.zeros((2*3*3, len(inp), cats))
 for inp in iterate_minibatches(X_test):
     s = i * args.batchsize
     if s + args.batchsize > predictions.shape[0]:
@@ -120,8 +121,6 @@ for inp in iterate_minibatches(X_test):
         predictions[s:s+args.batchsize, :] = numpy.argsort(test_fn(frame, inp)[0])[:, -5:][:, ::-1]
     else:
         config = 0
-        _preds = numpy.zeros((2*3*3, len(inp), cats))
-        frame = numpy.zeros((2,), dtype=numpy.int32)
         for flip in [False, True]:
             if flip:
                 # flip once here instead of having to flip multiple times on the GPU
