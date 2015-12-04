@@ -20,7 +20,7 @@ parser.add_argument('-t', '--tagged', help='path to directory containing prepare
 parser.add_argument('-n', '--network', help='name of network experiment', default='base')
 parser.add_argument('-m', '--model', type=argparse.FileType('rb'), help='trained model to evaluate', required=True)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
-parser.add_argument('-s', '--solution', type=argparse.FileType('rb'), help='path to correct labels file', default=None)
+parser.add_argument('-s', '--set', help='image set to evaluate on', choices=['test', 'val'], default='test')
 parser.add_argument('-l', '--labels', action='store_true', help='output category labels', default=False)
 parser.add_argument('-d', '--devkit', help='devkit directory containing categories.txt', default='mp-dev_kit')
 parser.add_argument('-c', '--combine', help='combine the output of multiple cropflips', default=False, action='store_true')
@@ -34,8 +34,8 @@ task("Loading data")
 subtask("Loading categories")
 cats = numpy.max(numpy.memmap(os.path.join(args.tagged, "train.labels.db"), dtype=numpy.int32, mode='r'))+1
 subtask("Loading test set")
-y_test = numpy.memmap(os.path.join(args.tagged, "test.labels.db"), dtype=numpy.int32, mode='r')
-X_test = numpy.memmap(os.path.join(args.tagged, "test.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
+y_test = numpy.memmap(os.path.join(args.tagged, "{}.labels.db".format(args.set)), dtype=numpy.int32, mode='r')
+X_test = numpy.memmap(os.path.join(args.tagged, "{}.images.db".format(args.set)), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
 
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
@@ -159,8 +159,8 @@ for i in range(len(predictions)):
         cats = " ".join([str(int(c)) for c in predictions[i]])
     print("{} {}".format(filenames[i], cats))
 
-if args.solution is not None:
-    y_val = numpy.memmap(args.solution, dtype=numpy.int32, mode='r').dimshuffle(0, 'x')
+if args.set != 'test':
+    y_val = y_test.dimshuffle(0, 'x')
     top1 = numpy.mean(numpy.any(numpy.equal(predictions[:, 0:0], y_val), axis=1))
     top5 = numpy.mean(numpy.any(numpy.equal(predictions[:, 0:5], y_val), axis=1))
     print("top1: {}, top5: {}".format(top1, top5))
