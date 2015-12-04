@@ -13,13 +13,13 @@ RAW = $(MMAP_FILES)/full/train.labels.db \
       #$(MMAP_FILES)/full/val.images.db \
       #$(MMAP_FILES)/full/test.images.db
 
-BRAW = $(MMAP_FILES)/focus-bad/train.labels.db \
-       $(MMAP_FILES)/focus-bad/train.images.db \
-       $(MMAP_FILES)/focus-bad/train.filenames.txt
+NGRAW = $(MMAP_FILES)/focus-not-goal/train.labels.db \
+        $(MMAP_FILES)/focus-not-goal/train.images.db \
+        $(MMAP_FILES)/focus-not-goal/train.filenames.txt
 
-GRAW = $(MMAP_FILES)/focus-good/train.labels.db \
-       $(MMAP_FILES)/focus-good/train.images.db \
-       $(MMAP_FILES)/focus-good/train.filenames.txt
+GRAW = $(MMAP_FILES)/focus-goal/train.labels.db \
+       $(MMAP_FILES)/focus-goal/train.images.db \
+       $(MMAP_FILES)/focus-goal/train.filenames.txt
 
 SRAW = $(MMAP_FILES)/small/train.labels.db \
        $(MMAP_FILES)/small/train.images.db \
@@ -81,15 +81,15 @@ $(RAW): $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/full
 	$(PYTHON) prepare.py $(MP_DATA)/images/ $(DK_DATA) $(MMAP_FILES)/full
 
-$(GRAW): $(FOCUS)/good/$(LAST) prepare.py $(RAW)
-	mkdir -p $(MMAP_FILES)/focus-good
-	$(PYTHON) prepare.py $(FOCUS)/good/ $(DK_DATA) $(MMAP_FILES)/focus-good
-	ln -sfn $(wildcard $(abspath $(MMAP_FILES)/full)/val.*.db) $(MMAP_FILES)/focus-good/
+$(GRAW): $(FOCUS)/goal/$(LAST) prepare.py $(RAW)
+	mkdir -p $(MMAP_FILES)/focus-goal
+	$(PYTHON) prepare.py $(FOCUS)/goal/ $(DK_DATA) $(MMAP_FILES)/focus-goal
+	ln -sfn $(wildcard $(abspath $(MMAP_FILES)/full)/val.*.db) $(MMAP_FILES)/focus-goal/
 
-$(BRAW): $(FOCUS)/bad/$(LAST) prepare.py $(RAW)
-	mkdir -p $(MMAP_FILES)/focus-bad
-	$(PYTHON) prepare.py $(FOCUS)/bad/ $(DK_DATA) $(MMAP_FILES)/focus-bad
-	ln -sfn $(wildcard $(abspath $(MMAP_FILES)/full)/val.*.db) $(MMAP_FILES)/focus-bad/
+$(NGRAW): $(FOCUS)/not-goal/$(LAST) prepare.py $(RAW)
+	mkdir -p $(MMAP_FILES)/focus-not-goal
+	$(PYTHON) prepare.py $(FOCUS)/not-goal/ $(DK_DATA) $(MMAP_FILES)/focus-not-goal
+	ln -sfn $(wildcard $(abspath $(MMAP_FILES)/full)/val.*.db) $(MMAP_FILES)/focus-not-goal/
 
 clean:
 	rm -f $(RAW) $(SRAW) env
