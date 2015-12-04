@@ -33,7 +33,7 @@ section("Setup")
 task("Loading data")
 subtask("Loading categories")
 cats = numpy.max(numpy.memmap(os.path.join(args.tagged, "train.labels.db"), dtype=numpy.int32, mode='r'))+1
-subtask("Loading test set")
+subtask("Loading {} set".format(args.set))
 y_test = numpy.memmap(os.path.join(args.tagged, "{}.labels.db".format(args.set)), dtype=numpy.int32, mode='r')
 X_test = numpy.memmap(os.path.join(args.tagged, "{}.images.db".format(args.set)), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
 
