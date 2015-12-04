@@ -84,12 +84,12 @@ $(RAW): $(IMDATA) prepare.py
 $(GRAW): $(FOCUS)/good/$(LAST) prepare.py $(RAW)
 	mkdir -p $(MMAP_FILES)/focus-good
 	$(PYTHON) prepare.py $(FOCUS)/good/ $(DK_DATA) $(MMAP_FILES)/focus-good
-	ln -sfn $(wildcard $(MMAP_FILES)/full/val.images.db) $(MMAP_FILES)/focus-good/
+	ln -sfn $(wildcard $(abspath $(MMAP_FILES)/full)/val.*.db) $(MMAP_FILES)/focus-good/
 
 $(BRAW): $(FOCUS)/bad/$(LAST) prepare.py $(RAW)
 	mkdir -p $(MMAP_FILES)/focus-bad
 	$(PYTHON) prepare.py $(FOCUS)/bad/ $(DK_DATA) $(MMAP_FILES)/focus-bad
-	ln -sfn $(wildcard $(MMAP_FILES)/full/val.images.db) $(MMAP_FILES)/focus-bad/
+	ln -sfn $(wildcard $(abspath $(MMAP_FILES)/full)/val.*.db) $(MMAP_FILES)/focus-bad/
 
 clean:
 	rm -f $(RAW) $(SRAW) env
