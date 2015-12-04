@@ -103,11 +103,14 @@ def dir2nd(directory, nsamples=0):
 
 section("Dataset preparation")
 
-task("Extracting training images")
-dir2nd("train", nsamples=args.samples)
+if os.path.exists(os.path.join(args.images, "train")):
+    task("Extracting training images")
+    dir2nd("train", nsamples=args.samples)
 
-task("Extracting validation images")
-dir2nd("val", nsamples=int(args.samples/10))
+if os.path.exists(os.path.join(args.images, "val")):
+    task("Extracting validation images")
+    dir2nd("val", nsamples=int(args.samples/10))
 
-task("Extracting test images")
-dir2nd("test", nsamples=0)
+if os.path.exists(os.path.join(args.images, "test")):
+    task("Extracting test images")
+    dir2nd("test", nsamples=0)
