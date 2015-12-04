@@ -130,13 +130,13 @@ for inp in iterate_minibatches(X_test):
                 for ycrop in [0, center, imsz - cropsz - 1]:
                     frame[0] = ycrop
                     frame[1] = xcrop
-                    _preds[config, :, :] = test_fn(frame, inp)[0]
+                    _preds[config, :len(inp), :] = test_fn(frame, inp)[0]
                     config += 1
 
         # take median across configurations
         # pick top 5 categories
         # last category is highest probability
-        predictions[s:s+len(inp), :] = numpy.argsort(numpy.median(_preds, axis=0))[:, -5:][:, ::-1]
+        predictions[s:s+len(inp), :] = numpy.argsort(numpy.median(_preds, axis=0))[:len(inp), -5:][:, ::-1]
 
     i += 1
     p.update(i)
