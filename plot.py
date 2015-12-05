@@ -67,7 +67,7 @@ for model in args.model:
         sys.exit(1)
 
 if not args.column:
-    fig = plt.figure()
+    fig = plt.figure(figsize=(20, 12))
 else:
     fig = plt.figure(figsize=(3.25, 3))
 ax_err = fig.gca()
