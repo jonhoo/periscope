@@ -142,3 +142,42 @@ def smarter(network, batchsz):
 
     return network
 
+def ncsmarter(network, batchsz):
+    # 1st. Data size 128 -> 121 -> 60
+    network = Conv2DLayer(network, 64, (8, 8), W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 2nd. Data size 60 -> 55 -> 27
+    network = Conv2DLayer(network, 112, (6, 6), W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 3rd.  Data size 27 -> 13
+    network = Conv2DLayer(network, 192, (3, 3), pad='same', W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 4th.  Data size 13 -> 11 -> 5
+    network = Conv2DLayer(network, 320, (3, 3), W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 5th. Data size 5 -> 3
+    network = Conv2DLayer(network, 512, (3, 3),
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 6th. Data size 3 -> 1
+    network = lasagne.layers.DenseLayer(network, 512,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = DropoutLayer(network)
+
+    return network
+
