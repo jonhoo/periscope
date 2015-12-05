@@ -142,3 +142,152 @@ def smarter(network, cropsz, batchsz):
 
     return network
 
+def bsmarter(network, cropsz, batchsz):
+    # 1st. Data size 117 -> 111 -> 55
+    network = Conv2DLayer(network, 64, (7, 7), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 2nd. Data size 55 -> 27
+    network = Conv2DLayer(network, 112, (5, 5), stride=1, pad='same',
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 3rd.  Data size 27 -> 13
+    network = Conv2DLayer(network, 192, (3, 3), stride=1, pad='same',
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 4th.  Data size 11 -> 5
+    network = Conv2DLayer(network, 320, (3, 3), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 5th. Data size 5 -> 3
+    network = Conv2DLayer(network, 512, (3, 3), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 6th. Data size 3 -> 1
+    network = lasagne.layers.DenseLayer(network, 512,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = DropoutLayer(network)
+    network = BatchNormLayer(network)
+
+    return network
+
+
+def tower(network, cropsz, batchsz):
+    # 1st. Data size 117 -> 111 -> 37
+    network = Conv2DLayer(network, 64, (7, 7), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (5, 5), stride=3, pad=1)
+
+    # 2nd. Data size 37 -> 18
+    network = Conv2DLayer(network, 112, (5, 5), stride=1, pad='same',
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 3rd.  Data size 18 -> 15
+    network = Conv2DLayer(network, 192, (4, 4), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 4th.  Data size 15 -> 12
+    network = Conv2DLayer(network, 192, (4, 4), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 5th.  Data size 12 -> 9
+    network = Conv2DLayer(network, 256, (4, 4), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 5th.  Data size 9 -> 6
+    network = Conv2DLayer(network, 256, (4, 4), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 6th. Data size 6 -> 3
+    network = Conv2DLayer(network, 256, (4, 4), stride=1,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 7th. Data size 3 -> 1
+    network = lasagne.layers.DenseLayer(network, 512,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = DropoutLayer(network)
+    # network = BatchNormLayer(network, nonlinearity=rectify)
+
+    return network
+
+def thinker(network, cropsz, batchsz):
+    # 1st. Data size 117 -> 111 -> 55
+    network = Conv2DLayer(network, 64, (7, 7),
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 2nd. Data size 55 -> 27
+    network = Conv2DLayer(network, 112, (5, 5), pad='same',
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 3rd.  Data size 27 -> 13
+    network = Conv2DLayer(network, 192, (3, 3), pad='same',
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 4th.  Data size 11 -> 11
+    network = Conv2DLayer(network, 256, (3, 3), pad='same',
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 5th.  Data size 11 -> 5
+    network = Conv2DLayer(network, 320, (3, 3),
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (3, 3), stride=2)
+
+    # 6th. Data size 5 -> 3
+    network = Conv2DLayer(network, 512, (3, 3),
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = BatchNormLayer(network)
+
+    # 7th. Data size 3 -> 1
+    network = lasagne.layers.DenseLayer(network, 512,
+        W=HeUniform('relu'))
+    network = prelu(network)
+    network = DropoutLayer(network)
+    network = BatchNormLayer(network)
+
+    return network
+
