@@ -79,9 +79,11 @@ ax_err.yaxis.set_ticks(numpy.arange(0.0, args.max+0.1, 0.1))
 if args.title is not None:
     ax_err.set_title(args.title)
 
-ms = 4
+ms = 6
+lw = 3
 if args.column:
-    ms = 3
+    ms = 2
+    lw = 1
 
 tlegends = []
 for i in range(len(training)):
@@ -99,21 +101,21 @@ for i in range(len(training)):
     c = None
     xend = len(training[i])+1
     if args.atk != 5 and args.set != 'validation':
-        c = ax_err.plot(range(1, xend), [1-dp[1] for dp in training[i]], '--', color=c, marker='s', markersize=ms)
+        c = ax_err.plot(range(1, xend), [1-dp[1] for dp in training[i]], '--', color=c, marker='s', markersize=ms, linewidth=lw)
         c = c[0].get_color()
         tlegends.append('{}, training, exact'.format(model))
     if args.atk != 1 and args.set != 'validation':
-        c = ax_err.plot(range(1, xend), [1-dp[2] for dp in training[i]], '--', color=c, marker='o', markersize=ms)
+        c = ax_err.plot(range(1, xend), [1-dp[2] for dp in training[i]], '--', color=c, marker='o', markersize=ms, linewidth=lw)
         c = c[0].get_color()
         tlegends.append('{}, training, top 5'.format(model))
 
     xend = len(validation[i])+1
     if args.atk != 5 and args.set != 'training':
-        c = ax_err.plot(range(1, xend), [1-dp[1] for dp in validation[i]], '', color=c, marker='s', markersize=ms)
+        c = ax_err.plot(range(1, xend), [1-dp[1] for dp in validation[i]], '', color=c, marker='s', markersize=ms, linewidth=lw)
         c = c[0].get_color()
         tlegends.append('{}, validation, exact'.format(model))
     if args.atk != 1 and args.set != 'training':
-        c = ax_err.plot(range(1, xend), [1-dp[2] for dp in validation[i]], '', color=c, marker='o', markersize=ms)
+        c = ax_err.plot(range(1, xend), [1-dp[2] for dp in validation[i]], '', color=c, marker='o', markersize=ms, linewidth=lw)
         c = c[0].get_color()
         tlegends.append('{}, validation, top 5'.format(model))
 
