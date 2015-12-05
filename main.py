@@ -209,7 +209,6 @@ def replot():
         fp.close()
         os.rename(fp.name, os.path.join(args.outdir, 'plot.png'))
 
-start = 0
 
 def latest_cachefile():
     global args
@@ -219,39 +218,60 @@ def latest_cachefile():
     caches.sort(key=lambda x: -int(re.match(r'^epoch-(\d+)\.mdl$', x).group(1)))
     return os.path.join(args.outdir, caches[0])
 
+def reload_model(resumefile):
+    global epoch, training, validation, saveparams, params
+    lfile = open(resumefile, 'rb')
+    section("Restoring state from {}".format(resumefile))
+    lfile.seek(0)
+    task("Loading format version")
+    formatver = pickle.load(lfile)
+    if type(formatver) != int:
+        formatver = 0
+        lfile.seek(0)
+    subtask("using format {}".format(formatver))
+    task("Loading parameters")
+    state = pickle.load(lfile)
+    task("Loading epoch information")
+    epoch = pickle.load(lfile)
+    training = pickle.load(lfile)
+    validation = pickle.load(lfile)
+    task("Restoring parameter values")
+    fileparams = saveparams if formatver >= 1 else params
+    assert len(fileparams) == len(state)
+    for p, v in zip(fileparams, state):
+        p.set_value(v)
+    epoch += 1
+    subtask("Resuming at epoch {}".format(epoch))
+
+def save_model(sfilename):
+    global epoch, training, validation, saveparams
+    subtask("Storing trained parameters as {}".format(sfilename))
+    with open(sfilename, 'wb+') as sfile:
+        sfile.seek(0)
+        sfile.truncate()
+        formatver = 1
+        pickle.dump(formatver, sfile)
+        pickle.dump([p.get_value() for p in saveparams], sfile)
+        pickle.dump(epoch, sfile)
+        pickle.dump(training, sfile)
+        pickle.dump(validation, sfile)
+
+epoch = 0
+sfilename = None
 os.makedirs(args.outdir, exist_ok=True)
 try:
     resumefile = latest_cachefile()
     if resumefile is None:
         raise EOFError
-    with open(resumefile, 'rb') as lfile:
-        section("Restoring state from {}".format(resumefile))
-        lfile.seek(0)
-        task("Loading format version")
-        formatver = pickle.load(lfile)
-        if type(formatver) != int:
-            formatver = 0
-            lfile.seek(0)
-        subtask("using format {}".format(formatver))
-        task("Loading parameters")
-        state = pickle.load(lfile)
-        task("Loading epoch information")
-        epoch = pickle.load(lfile)
-        training = pickle.load(lfile)
-        validation = pickle.load(lfile)
-        task("Restoring parameter values")
-        fileparams = saveparams if formatver >= 1 else params
-        assert len(fileparams) == len(state)
-        for p, v in zip(fileparams, state):
-            p.set_value(v)
-        subtask("Resuming at epoch {}".format(epoch+1))
-        start = epoch+1
+    reload_model(resumefile)
+    sfilename = resumefile
 except EOFError:
     task("No model state stored; starting afresh")
 
 section("Training")
+
 # Finally, launch the training loop.
-for epoch in range(start, end):
+while epoch < end:
     replot()
 
     task("Starting training epoch {}".format(epoch))
@@ -314,18 +334,11 @@ for epoch in range(start, end):
     training.append((train_loss/train_batches, train_acc1/train_test_batches, train_acc5/train_test_batches))
     validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
 
-    # store model state
+    # Save the model and advance to the next epoch.
+    # using the training set.
     sfilename = os.path.join(args.outdir, 'epoch-%03d.mdl' % epoch)
-    subtask("Storing trained parameters as {}".format(sfilename))
-    with open(sfilename, 'wb+') as sfile:
-        sfile.seek(0)
-        sfile.truncate()
-        formatver = 1
-        pickle.dump(formatver, sfile)
-        pickle.dump([p.get_value() for p in saveparams], sfile)
-        pickle.dump(epoch, sfile)
-        pickle.dump(training, sfile)
-        pickle.dump(validation, sfile)
+    save_model(sfilename)
+    epoch += 1
 
     # Then we print the results for this epoch:
     subtask(("Epoch results:" +
@@ -336,6 +349,7 @@ for epoch in range(start, end):
         training[-1][2] * 100,
         validation[-1][2] * 100,
     ))
+
 
 replot()
 
