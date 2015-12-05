@@ -23,7 +23,7 @@ parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch
 parser.add_argument('-s', '--set', help='image set to evaluate on', choices=['test', 'val'], default='test')
 parser.add_argument('-l', '--labels', action='store_true', help='output category labels', default=False)
 parser.add_argument('-d', '--devkit', help='devkit directory containing categories.txt', default='mp-dev_kit')
-parser.add_argument('-c', '--combine', help='combine the output of multiple cropflips', default=False, action='store_true')
+parser.add_argument('-c', '--combine', help='combine the output of multiple crops', default=False, action='store_true')
 args = parser.parse_args()
 
 imsz = 128
@@ -45,7 +45,7 @@ input_var = T.tensor4('X')
 crop_var = T.ivector('c') # ycrop, xcrop
 center = numpy.floor((imsz - cropsz)/2)
 
-# crop+flip
+# crop
 cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
 
 # input layer is always the same
@@ -112,7 +112,7 @@ i = 0
 frame = numpy.zeros((2,), dtype=numpy.int32)
 frame[0] = center
 frame[1] = center
-_preds = numpy.zeros((2*3*3, args.batchsize, cats))
+_preds = numpy.zeros((3*3, args.batchsize, cats))
 for inp in iterate_minibatches(X_test):
     s = i * args.batchsize
     if s + args.batchsize > predictions.shape[0]:
@@ -123,16 +123,12 @@ for inp in iterate_minibatches(X_test):
     else:
         config = 0
         _preds.fill(0)
-        for flip in [False, True]:
-            if flip:
-                # flip once here instead of having to flip multiple times on the GPU
-                inp = inp[:, :, :, ::-1]
-            for xcrop in [0, center, imsz - cropsz - 1]:
-                for ycrop in [0, center, imsz - cropsz - 1]:
-                    frame[0] = ycrop
-                    frame[1] = xcrop
-                    _preds[config, :len(inp), :] = test_fn(frame, inp)[0]
-                    config += 1
+        for xcrop in [0, center, imsz - cropsz - 1]:
+            for ycrop in [0, center, imsz - cropsz - 1]:
+                frame[0] = ycrop
+                frame[1] = xcrop
+                _preds[config, :len(inp), :] = test_fn(frame, inp)[0]
+                config += 1
 
         # take median across configurations
         # pick top 5 categories
