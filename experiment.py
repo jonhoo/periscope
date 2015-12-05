@@ -15,7 +15,7 @@ if theano.config.device.startswith("gpu"):
         Conv2DLayer = lasagne.layers.dnn.Conv2DDNNLayer
         MaxPool2DLayer = lasagne.layers.dnn.MaxPool2DDNNLayer
 
-def base(network, cropsz, batchsz):
+def base(network, batchsz):
     # 1st
     network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=rectify)
     network = BatchNormLayer(network, nonlinearity=rectify)
@@ -35,7 +35,7 @@ def base(network, cropsz, batchsz):
     return network
 
 # This one achieves about 27.5% err@5
-def deeper(network, cropsz, batchsz):
+def deeper(network, batchsz):
     # 1st. Data size 117 -> 111 -> 55
     network = Conv2DLayer(network, 64, (7, 7), stride=1)
     network = BatchNormLayer(network, nonlinearity=rectify)
@@ -69,7 +69,7 @@ def deeper(network, cropsz, batchsz):
     return network
 
 
-def slim(network, cropsz, batchsz):
+def slim(network, batchsz):
     # 1st
     network = Conv2DLayer(network, 64, (5, 5), stride=2, W=HeUniform('relu'))
     network = prelu(network)
@@ -98,7 +98,7 @@ def slim(network, cropsz, batchsz):
     return network
 
 
-def smarter(network, cropsz, batchsz):
+def smarter(network, batchsz):
     # 1st. Data size 117 -> 111 -> 55
     network = Conv2DLayer(network, 64, (7, 7), stride=1,
         W=HeUniform('relu'))

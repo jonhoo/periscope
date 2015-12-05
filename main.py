@@ -37,7 +37,6 @@ if args.outdir is None:
     args.outdir = "exp-{}".format(args.network)
 
 imsz = 128
-cropsz = 117
 
 section("Setup")
 task("Loading data")
@@ -58,17 +57,13 @@ target_var = T.ivector('y')
 
 # parameters
 flip_var = T.iscalar('f')
-crop_var = T.ivector('c') # ycrop, xcrop
-center = numpy.zeros((2,), dtype=numpy.int32)
-center.fill(numpy.floor((imsz - cropsz)/2))
 
-# crop+flip
-cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
-prepared = cropped[:,:,:,::flip_var]
+# flip
+prepared = input_var[:,:,:,::flip_var]
 
 # input layer is always the same
 network = lasagne.layers.InputLayer(
-        (args.batchsize, 3, cropsz, cropsz), prepared)
+        (args.batchsize, 3, imsz, imsz), prepared)
 
 # import external network
 if args.network not in experiment.__dict__:
@@ -77,7 +72,7 @@ if args.network not in experiment.__dict__:
     sys.exit(1)
 
 # dispatch to user-defined network
-network = experiment.__dict__[args.network](network, cropsz, args.batchsize)
+network = experiment.__dict__[args.network](network, args.batchsize)
 
 # Last softmax layer is always the same
 from lasagne.nonlinearities import softmax
@@ -101,7 +96,7 @@ subtask("parameter count {} ({} trainable) in {} arrays".format(
         len(saveparams)))
 
 # compile training function that updates parameters and returns training loss
-train_fn = theano.function([learning_rate, flip_var, crop_var, input_var, target_var], loss, updates=updates)
+train_fn = theano.function([learning_rate, flip_var, input_var, target_var], loss, updates=updates)
 
 # Create a loss expression for validation/testing. The crucial difference here
 # is that we do a deterministic forward pass through the network, disabling
@@ -115,10 +110,10 @@ test_1_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, target_var, top_k=5))
 
 # compile a second function computing the validation loss and accuracy:
-val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [test_loss, test_1_acc, test_5_acc])
+val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1)], [test_loss, test_1_acc, test_5_acc])
 
 # a function for debug output
-debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
+debug_fn = theano.function([input_var, theano.Param(flip_var, default=1)], test_prediction)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
@@ -269,12 +264,9 @@ for epoch in range(start, end):
     train_loss = 0
     p = progress(train_batches)
     i = 1
-    frame = numpy.zeros((2,), dtype=numpy.int32)
     for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         flip = numpy.random.randint(0, 2) and 1 or -1
-        frame[0] = numpy.random.randint(0, imsz - cropsz)
-        frame[1] = numpy.random.randint(0, imsz - cropsz)
-        train_loss += train_fn(learning_rates[epoch], flip, frame, inp, res)
+        train_loss += train_fn(learning_rates[epoch], flip, inp, res)
         p.update(i)
         i = i+1
         if i > train_batches:

@@ -23,11 +23,10 @@ parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch
 parser.add_argument('-s', '--set', help='image set to evaluate on', choices=['test', 'val'], default='test')
 parser.add_argument('-l', '--labels', action='store_true', help='output category labels', default=False)
 parser.add_argument('-d', '--devkit', help='devkit directory containing categories.txt', default='mp-dev_kit')
-parser.add_argument('-c', '--combine', help='combine the output of multiple cropflips', default=False, action='store_true')
+parser.add_argument('-c', '--combine', help='combine the output of both flips', default=False, action='store_true')
 args = parser.parse_args()
 
 imsz = 128
-cropsz = 117
 
 section("Setup")
 task("Loading data")
@@ -41,15 +40,8 @@ task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
 input_var = T.tensor4('X')
 
-# parameters
-crop_var = T.ivector('c') # ycrop, xcrop
-center = numpy.floor((imsz - cropsz)/2)
-
-# crop+flip
-cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
-
 # input layer is always the same
-network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), cropped)
+network = lasagne.layers.InputLayer((args.batchsize, 3, imsz, imsz), input_var)
 
 # import external network
 if args.network not in experiment.__dict__:
@@ -58,7 +50,7 @@ if args.network not in experiment.__dict__:
     sys.exit(1)
 
 # dispatch to user-defined network
-network = experiment.__dict__[args.network](network, cropsz, args.batchsize)
+network = experiment.__dict__[args.network](network, args.batchsize)
 
 # Last softmax layer is always the same
 from lasagne.nonlinearities import softmax
@@ -72,7 +64,7 @@ params = lasagne.layers.get_all_params(network, trainable=True)
 saveparams = lasagne.layers.get_all_params(network)
 
 # Create an evaluation expression for testing.
-test_fn = theano.function([crop_var, input_var], [lasagne.layers.get_output(network, deterministic=True)])
+test_fn = theano.function([input_var], [lasagne.layers.get_output(network, deterministic=True)])
 
 def iterate_minibatches(inputs):
     global args
@@ -109,9 +101,6 @@ predictions = numpy.zeros((len(X_test), 5))
 test_batches = len(range(0, cases, args.batchsize))
 p = progress(test_batches)
 i = 0
-frame = numpy.zeros((2,), dtype=numpy.int32)
-frame[0] = center
-frame[1] = center
 _preds = numpy.zeros((2*3*3, args.batchsize, cats))
 for inp in iterate_minibatches(X_test):
     s = i * args.batchsize
@@ -119,20 +108,15 @@ for inp in iterate_minibatches(X_test):
         inp = inp[:predictions.shape[0] - s]
 
     if not args.combine:
-        predictions[s:s+len(inp), :] = numpy.argsort(test_fn(frame, inp)[0])[:, -5:][:, ::-1]
+        predictions[s:s+len(inp), :] = numpy.argsort(test_fn(inp)[0])[:, -5:][:, ::-1]
     else:
         config = 0
         _preds.fill(0)
         for flip in [False, True]:
             if flip:
-                # flip once here instead of having to flip multiple times on the GPU
                 inp = inp[:, :, :, ::-1]
-            for xcrop in [0, center, imsz - cropsz - 1]:
-                for ycrop in [0, center, imsz - cropsz - 1]:
-                    frame[0] = ycrop
-                    frame[1] = xcrop
-                    _preds[config, :len(inp), :] = test_fn(frame, inp)[0]
-                    config += 1
+            _preds[config, :len(inp), :] = test_fn(inp)[0]
+            config += 1
 
         # take median across configurations
         # pick top 5 categories
