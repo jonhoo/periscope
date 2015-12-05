@@ -101,7 +101,7 @@ predictions = numpy.zeros((len(X_test), 5))
 test_batches = len(range(0, cases, args.batchsize))
 p = progress(test_batches)
 i = 0
-_preds = numpy.zeros((2*3*3, args.batchsize, cats))
+_preds = numpy.zeros((2, args.batchsize, cats))
 for inp in iterate_minibatches(X_test):
     s = i * args.batchsize
     if s + args.batchsize > predictions.shape[0]:
