@@ -17,6 +17,8 @@ import os.path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--tagged', help='path to directory containing prepared files', default='tagged/full')
+parser.add_argument('-a', '--adverse', help='path to directory containing adverse images to mix in', default='tagged/notgoal')
+parser.add_argument('-x', '--mixin', type=int, help='number of adverse examples to mix per batch')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
@@ -44,6 +46,8 @@ task("Loading data")
 subtask("Loading training set")
 y_train = numpy.memmap(os.path.join(args.tagged, "train.labels.db"), dtype=numpy.int32, mode='r')
 X_train = numpy.memmap(os.path.join(args.tagged, "train.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_train), 3, imsz, imsz))
+if args.mixin:
+  X_adverse = numpy.memmap(os.path.join(args.adverse, "train.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_train), 3, imsz, imsz))
 cats = numpy.max(y_train)+1
 subtask("Loading validation set")
 y_val = numpy.memmap(os.path.join(args.tagged, "val.labels.db"), dtype=numpy.int32, mode='r')
@@ -139,6 +143,40 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
             yield inputs[excerpt], targets[excerpt]
+
+def iterate_mixbatches(
+        inputs, targets, altinputs, alttargets, mixamount,
+        batchsize, shuffle=False, test=False):
+    assert len(inputs) == len(targets)
+    end = len(inputs)
+    mainamount = batchsize - mixamount
+    if shuffle:
+        start = random.randrange(end)
+        mixat = random.randrange(end)
+        steps = [n % end for n in range(start, end + start, mainamount)]
+        random.shuffle(steps)
+    else:
+        steps = range(0, end, mainamount)
+    for start_idx in steps:
+        if shuffle and start_idx + mainamount > end:
+            # Handle wraparound case
+            e1 = slice(start_idx, end)
+            e2 = slice(0, (start_idx + mainamount) % end)
+            batch = (numpy.concatenate([inputs[e1], inputs[e2]]),
+                   numpy.concatenate([targets[e1], targets[e2]]))
+        else:
+            excerpt = slice(start_idx, start_idx + mainamount)
+            batch = inputs[excerpt], targets[excerpt]
+        if mixat + mixamount >= end:
+            e1 = slice(mixat, end)
+            e2 = slice(0, (mixat + mixamount) % end)
+            extra = (numpy.concatenate(altinputs[e1], altinputs[e2]),
+                    numpy.concatenate(alttargets[e1], alttargets[e2]))
+        else:
+            excerpt = slice(mixat, mixat + mixamount)
+            extra = altinputs[excerpt], alttargets[excerpt]
+        yield (numpy.concatenate((batch[0], extra[0])),
+               numpy.concatenate((batch[1], extra[1])))
 
 training = []
 validation = []
@@ -290,7 +328,15 @@ while epoch < end:
     p = progress(train_batches)
     i = 1
     frame = numpy.zeros((2,), dtype=numpy.int32)
-    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
+
+    if args.mixin:
+        iterator = iterate_mixbatches(X_train, y_train, X_adverse, y_train,
+                args.mixin, args.batchsize, shuffle=True)
+    else:
+        iterator = iterate_minibatches(X_train, y_train,
+                 args.batchsize, shuffle=True)
+
+    for inp, res in iterator:
         flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)

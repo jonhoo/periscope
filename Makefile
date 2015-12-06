@@ -44,6 +44,7 @@ solve-small: $(VENV) $(SRAW) Makefile
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
                 --network $(NET) \
+		--mixin 26 \
 		--tagged $(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
@@ -51,6 +52,7 @@ analyze: $(VENV) $(RAW) Makefile
                 --network $(NET) \
 		--confusion \
 		--response \
+		--mixin 26 \
                 --limit $(LIMIT) \
 		--tagged $(MMAP_FILES)/full
 
@@ -71,6 +73,10 @@ $(SRAW): $(IMDATA) prepare.py
 notgoal: prepare.py
 	mkdir -p $(MMAP_FILES)/notgoal
 	$(PYTHON) prepare.py $(RESP_DIR)/notgoal/ $(DK_DATA) $(MMAP_FILES)/notgoal
+
+chosen: prepare.py
+	mkdir -p $(MMAP_FILES)/chosen
+	$(PYTHON) prepare.py $(RESP_DIR)/chosen/ $(DK_DATA) $(MMAP_FILES)/chosen
 
 $(RAW): $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/full
