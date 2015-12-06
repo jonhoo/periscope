@@ -5,6 +5,7 @@ VENV = env/.built
 PYTHON = env/bin/python3
 NET ?= slim
 LIMIT ?= 0
+RESP_DIR ?= ./resp
 
 RAW = $(MMAP_FILES)/full/train.labels.db \
       $(MMAP_FILES)/full/train.images.db \
@@ -66,6 +67,10 @@ view: $(VENV)
 $(SRAW): $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/small
 	$(PYTHON) prepare.py -c10 -s200 $(MP_DATA)/images/ $(DK_DATA) $(MMAP_FILES)/small
+
+notgoal: prepare.py
+	mkdir -p $(MMAP_FILES)/notgoal
+	$(PYTHON) prepare.py $(RESP_DIR)/notgoal/ $(DK_DATA) $(MMAP_FILES)/notgoal
 
 $(RAW): $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/full
