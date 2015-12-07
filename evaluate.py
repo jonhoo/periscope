@@ -141,7 +141,7 @@ for inp in iterate_minibatches(X_test):
                 else:
                     xcrop = slice(xcrops+cropsz-1, None if xcrops == 0 else xcrops-1, -1)
 
-                for ycrops in crops:
+                for ycrop in crops:
                     cropped = inp[:, :, ycrop:ycrop+cropsz, xcrop]
 
                     for network in networks:
