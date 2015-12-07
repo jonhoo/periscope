@@ -132,14 +132,11 @@ for inp in iterate_minibatches(X_test):
         config = 0
         _preds.fill(0)
         for flip in flips:
-            if flip:
-                # flip once here instead of having to flip multiple times on the GPU
-                inp = inp[:, :, :, ::-1]
             for xcrops in crops:
                 if flip:
-                    xcrop = slice(xcrops, xcrops+cropsz)
-                else:
                     xcrop = slice(xcrops+cropsz-1, None if xcrops == 0 else xcrops-1, -1)
+                else:
+                    xcrop = slice(xcrops, xcrops+cropsz)
 
                 for ycrop in crops:
                     cropped = inp[:, :, ycrop:ycrop+cropsz, xcrop]
