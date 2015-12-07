@@ -26,6 +26,12 @@ parser.add_argument('-d', '--devkit', help='devkit directory containing categori
 parser.add_argument('-c', '--combine', help='combine the output of multiple cropflips', default=False, action='store_true')
 args = parser.parse_args()
 
+assert len(args.network) == len(args.model)
+if len(args.model) != 1 and not args.combine:
+    import sys
+    print("Cannot evaluate on multiple models without combination", file=sys.stderr)
+    sys.exit(1)
+
 imsz = 128
 cropsz = 117
 
