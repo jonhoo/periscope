@@ -81,18 +81,18 @@ for m in args.model:
     networks.append(theano.function([input_var], [lasagne.layers.get_output(network, deterministic=True)]))
 
     # Load model parameters
-    subtask("Restoring state from {}".format(args.model.name))
-    args.model.seek(0)
-    formatver = pickle.load(args.model)
+    subtask("Restoring state from {}".format(m.name))
+    m.seek(0)
+    formatver = pickle.load(m)
     if type(formatver) != int:
         formatver = 0
-        args.model.seek(0)
+        m.seek(0)
 
     # Load parameters
-    state = pickle.load(args.model)
-    pickle.load(args.model) # epoch
-    pickle.load(args.model) # training
-    pickle.load(args.model) # validation
+    state = pickle.load(m)
+    pickle.load(m) # epoch
+    pickle.load(m) # training
+    pickle.load(m) # validation
     # Restore parameter values
     fileparams = saveparams if formatver >= 1 else params
     assert len(fileparams) == len(state)
