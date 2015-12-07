@@ -62,12 +62,12 @@ for m in args.model:
 
     # import external network
     if args.network[ni] not in experiment.__dict__:
-        print("No network {} found.".format(args.network))
+        print("No network {} found.".format(args.network[ni]))
         import sys
         sys.exit(1)
 
     # dispatch to user-defined network
-    network = experiment.__dict__[args.network](network, cropsz, args.batchsize)
+    network = experiment.__dict__[args.network[ni]](network, cropsz, args.batchsize)
 
     # Last softmax layer is always the same
     from lasagne.nonlinearities import softmax
