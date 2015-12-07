@@ -127,7 +127,7 @@ for inp in iterate_minibatches(X_test):
 
     if not args.combine:
         # center crop
-        predictions[s:s+len(inp), :] = numpy.argsort(test_fn(inp[:, :, center:center+cropsz, center:center+cropsz])[0])[:, -5:][:, ::-1]
+        predictions[s:s+len(inp), :] = numpy.argsort(networks[0](inp[:, :, center:center+cropsz, center:center+cropsz])[0])[:, -5:][:, ::-1]
     else:
         config = 0
         _preds.fill(0)
