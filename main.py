@@ -18,7 +18,7 @@ import os.path
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--tagged', help='path to directory containing prepared files', default='tagged/full')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
-parser.add_argument('-n', '--negative', type=int, help='number of negative samples to add per batch', default=0)
+parser.add_argument('--negative', type=int, help='number of negative samples to add per batch', default=0)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
