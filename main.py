@@ -3,6 +3,7 @@
 from progressbar import ProgressBar
 from pretty import *
 import argparse
+import experiment
 import lasagne
 import theano
 import theano.tensor as T
@@ -14,30 +15,16 @@ import random
 import os
 import os.path
 
-from lasagne.layers.normalization import BatchNormLayer
-from lasagne.nonlinearities import rectify, softmax
-
-Conv2DLayer = lasagne.layers.Conv2DLayer
-MaxPool2DLayer = lasagne.layers.MaxPool2DLayer
-if theano.config.device.startswith("gpu"):
-    import lasagne.layers.dnn
-    # Force GPU implementations if a GPU is available.
-    # Do not know why Theano is not selecting these impls
-    # by default as advertised.
-    if theano.sandbox.cuda.dnn.dnn_available():
-        Conv2DLayer = lasagne.layers.dnn.Conv2DDNNLayer
-        MaxPool2DLayer = lasagne.layers.dnn.MaxPool2DDNNLayer
-
 parser = argparse.ArgumentParser()
-parser.add_argument('tagged', help='path to directory containing prepared files')
+parser.add_argument('-t', '--tagged', help='path to directory containing prepared files', default='tagged/full')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
 parser.add_argument('-n', '--negative', type=int, help='number of negative samples to add per batch', default=0)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
-parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default='out')
-parser.add_argument('--labels', help='record test set predictions to this file', action='store_true')
-parser.set_defaults(labels=False)
+parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default=None)
+parser.add_argument('-n', '--network', help='name of network experiment', default='base')
+parser.add_argument('--limit', type=int, help='limit analyses to this many images', default=None)
 parser.add_argument('--no-plot', help='skip the plot', action='store_false')
 parser.set_defaults(plot=True)
 parser.add_argument('--confusion', help='compute confusion stats', action='store_true')
@@ -46,6 +33,9 @@ parser.add_argument('--response', help='compute response region', action='store_
 parser.set_defaults(response=False)
 parser.add_argument('-v', '--verbose', action='count')
 args = parser.parse_args()
+
+if args.outdir is None:
+    args.outdir = "exp-{}".format(args.network)
 
 imsz = 128
 cropsz = 117
@@ -60,17 +50,10 @@ subtask("Loading validation set")
 y_val = numpy.memmap(os.path.join(args.tagged, "val.labels.db"), dtype=numpy.int32, mode='r')
 X_val = numpy.memmap(os.path.join(args.tagged, "val.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_val), 3, imsz, imsz))
 
-if args.labels:
-    subtask("Loading test set")
-    y_test = numpy.memmap(os.path.join(args.tagged, "test.labels.db"), dtype=numpy.int32, mode='r')
-    X_test = numpy.memmap(os.path.join(args.tagged, "test.images.db"), dtype=numpy.float32, mode='r', shape=(len(y_test), 3, imsz, imsz))
-
 task("Building model and compiling functions")
 # create Theano variables for input and target minibatch
 learning_rates = numpy.logspace(-1.5, -4, 30, dtype=theano.config.floatX)
-learning_rates_var = theano.shared(learning_rates)
-learning_rate = theano.shared(learning_rates[0])
-epochi = T.iscalar('e')
+learning_rate = T.scalar('l')
 input_var = T.tensor4('X')
 target_var = T.matrix('y')
 
@@ -84,24 +67,21 @@ center.fill(numpy.floor((imsz - cropsz)/2))
 cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
 prepared = cropped[:,:,:,::flip_var]
 
-# create a small convolutional neural network
-network = lasagne.layers.InputLayer((args.batchsize, 3, cropsz, cropsz), prepared)
-# 1st
-network = Conv2DLayer(network, 64, (8, 8), stride=2, nonlinearity=rectify)
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 2nd
-network = Conv2DLayer(network, 96, (5, 5), stride=1, pad='same')
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 3rd
-network = Conv2DLayer(network, 128, (3, 3), stride=1, pad='same')
-network = BatchNormLayer(network, nonlinearity=rectify)
-network = MaxPool2DLayer(network, (3, 3), stride=2)
-# 4th
-network = lasagne.layers.DenseLayer(network, 512)
-network = BatchNormLayer(network, nonlinearity=rectify)
-# 5th
+# input layer is always the same
+network = lasagne.layers.InputLayer(
+        (args.batchsize, 3, cropsz, cropsz), prepared)
+
+# import external network
+if args.network not in experiment.__dict__:
+    print("No network {} found.".format(args.network))
+    import sys
+    sys.exit(1)
+
+# dispatch to user-defined network
+network = experiment.__dict__[args.network](network, cropsz, args.batchsize)
+
+# Last softmax layer is always the same
+from lasagne.nonlinearities import softmax
 network = lasagne.layers.DenseLayer(network, cats, nonlinearity=softmax)
 
 # Output
@@ -116,14 +96,13 @@ loss += regularize_network_params(network, l2) * 1e-3
 params = lasagne.layers.get_all_params(network, trainable=True)
 saveparams = lasagne.layers.get_all_params(network)
 updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=args.momentum)
-updates[learning_rate] = learning_rates_var[epochi]
 subtask("parameter count {} ({} trainable) in {} arrays".format(
         lasagne.layers.count_params(network),
         lasagne.layers.count_params(network, trainable=True),
         len(saveparams)))
 
 # compile training function that updates parameters and returns training loss
-train_fn = theano.function([epochi, flip_var, crop_var, input_var, target_var], loss, updates=updates)
+train_fn = theano.function([learning_rate, flip_var, crop_var, input_var, target_var], loss, updates=updates)
 
 # Create a loss expression for validation/testing. The crucial difference here
 # is that we do a deterministic forward pass through the network, disabling
@@ -139,9 +118,7 @@ test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 # compile a second function computing the validation loss and accuracy:
 val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [test_loss, test_1_acc, test_5_acc])
 
-# a function for test output
-top5_pred = T.argsort(test_prediction, axis=1)[:, -5:]
-test_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [top5_pred])
+# a function for debug output
 debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
 
 def target_from_res(res):
@@ -181,8 +158,10 @@ if args.plot:
     matplotlib.use('Agg') # avoid the need for X
 
 def replot():
+    global args
     if not args.plot:
         return
+
     global training
     global validation
     if len(validation) == 0:
@@ -198,6 +177,9 @@ def replot():
 
     # styles
     ax_loss.grid(True)
+    ax_err.grid(b=True, which='major', color='b', linestyle='-', alpha=0.2)
+    ax_err.grid(b=True, which='minor', color='b', linestyle='-', alpha=0.1)
+    ax_err.minorticks_on()
     ax_err.grid(True)
     #ax_loss.set_yscale('log')
     #ax_err.set_yscale('log')
@@ -234,50 +216,69 @@ def replot():
         fp.close()
         os.rename(fp.name, os.path.join(args.outdir, 'plot.png'))
 
-start = 0
 
-def latest_cachefile(outdir):
-    caches = [n for n in os.listdir(outdir) if re.match(r'^epoch-\d+\.mdl$', n)]
+def latest_cachefile():
+    global args
+    caches = [n for n in os.listdir(args.outdir) if re.match(r'^epoch-\d+\.mdl$', n)]
     if len(caches) == 0:
         return None
     caches.sort(key=lambda x: -int(re.match(r'^epoch-(\d+)\.mdl$', x).group(1)))
-    return os.path.join(outdir, caches[0])
+    return os.path.join(args.outdir, caches[0])
 
+def reload_model(resumefile):
+    global epoch, training, validation, saveparams, params
+    lfile = open(resumefile, 'rb')
+    section("Restoring state from {}".format(resumefile))
+    lfile.seek(0)
+    task("Loading format version")
+    formatver = pickle.load(lfile)
+    if type(formatver) != int:
+        formatver = 0
+        lfile.seek(0)
+    subtask("using format {}".format(formatver))
+    task("Loading parameters")
+    state = pickle.load(lfile)
+    task("Loading epoch information")
+    epoch = pickle.load(lfile)
+    training = pickle.load(lfile)
+    validation = pickle.load(lfile)
+    task("Restoring parameter values")
+    fileparams = saveparams if formatver >= 1 else params
+    assert len(fileparams) == len(state)
+    for p, v in zip(fileparams, state):
+        p.set_value(v)
+    epoch += 1
+    subtask("Resuming at epoch {}".format(epoch))
+
+def save_model(sfilename):
+    global epoch, training, validation, saveparams
+    subtask("Storing trained parameters as {}".format(sfilename))
+    with open(sfilename, 'wb+') as sfile:
+        sfile.seek(0)
+        sfile.truncate()
+        formatver = 1
+        pickle.dump(formatver, sfile)
+        pickle.dump([p.get_value() for p in saveparams], sfile)
+        pickle.dump(epoch, sfile)
+        pickle.dump(training, sfile)
+        pickle.dump(validation, sfile)
+
+epoch = 0
+sfilename = None
 os.makedirs(args.outdir, exist_ok=True)
 try:
-    resumefile = latest_cachefile(args.outdir)
+    resumefile = latest_cachefile()
     if resumefile is None:
         raise EOFError
-    with open(resumefile, 'rb') as lfile:
-        section("Restoring state from {}".format(resumefile))
-        lfile.seek(0)
-        task("Loading format version")
-        formatver = pickle.load(lfile)
-        if type(formatver) != int:
-            formatver = 0
-            lfile.seek(0)
-        subtask("using format {}".format(formatver))
-        task("Loading parameters")
-        state = pickle.load(lfile)
-        task("Loading epoch information")
-        epoch = pickle.load(lfile)
-        training = pickle.load(lfile)
-        validation = pickle.load(lfile)
-        task("Restoring parameter values")
-        fileparams = saveparams if formatver >= 1 else params
-        assert len(fileparams) == len(state)
-        for p, v in zip(fileparams, state):
-            p.set_value(v)
-        learning_rate.set_value(
-               learning_rates[min(epoch, len(learning_rates) - 1)])
-        subtask("Resuming at epoch {}".format(epoch+1))
-        start = epoch+1
+    reload_model(resumefile)
+    sfilename = resumefile
 except EOFError:
     task("No model state stored; starting afresh")
 
 section("Training")
+
 # Finally, launch the training loop.
-for epoch in range(start, end):
+while epoch < end:
     replot()
 
     task("Starting training epoch {}".format(epoch))
@@ -287,6 +288,9 @@ for epoch in range(start, end):
     train_batches = len(range(0, len(X_train), args.batchsize-args.negative))
     val_batches = len(range(0, len(X_val), args.batchsize))
     train_test_batches = val_batches
+
+    if args.batch_stop != 0:
+        train_batches = min(train_batches, args.batch_stop)
 
     # In each epoch, we do a pass over minibatches of the training data:
     train_loss = 0
@@ -304,11 +308,10 @@ for epoch in range(start, end):
             inp = numpy.concatenate([inp, numpy.random.rand(args.negative, 3, imsz, imsz).astype(theano.config.floatX)])
             res = numpy.concatenate([res, numpy.zeros((args.negative, cats), dtype=theano.config.floatX)+(1.0/cats)])
 
-        train_loss += train_fn(epoch, flip, frame, inp, res)
+        train_loss += train_fn(learning_rates[epoch], flip, frame, inp, res)
         p.update(i)
         i = i+1
-        if args.batch_stop != 0 and i > args.batch_stop:
-            p.update(train_batches)
+        if i > train_batches:
             break
 
     # Only do forward pass on a subset of the training data
@@ -345,19 +348,11 @@ for epoch in range(start, end):
     training.append((train_loss/train_batches, train_acc1/train_test_batches, train_acc5/train_test_batches))
     validation.append((val_loss/val_batches, val_acc1/val_batches, val_acc5/val_batches))
 
-    # store model state
-    if args.outdir is not None:
-        sfilename = os.path.join(args.outdir, 'epoch-%03d.mdl' % epoch)
-        subtask("Storing trained parameters as {}".format(sfilename))
-        with open(sfilename, 'wb+') as sfile:
-            sfile.seek(0)
-            sfile.truncate()
-            formatver = 1
-            pickle.dump(formatver, sfile)
-            pickle.dump([p.get_value() for p in saveparams], sfile)
-            pickle.dump(epoch, sfile)
-            pickle.dump(training, sfile)
-            pickle.dump(validation, sfile)
+    # Save the model and advance to the next epoch.
+    # using the training set.
+    sfilename = os.path.join(args.outdir, 'epoch-%03d.mdl' % epoch)
+    save_model(sfilename)
+    epoch += 1
 
     # Then we print the results for this epoch:
     subtask(("Epoch results:" +
@@ -369,39 +364,23 @@ for epoch in range(start, end):
         validation[-1][2] * 100,
     ))
 
+
 replot()
 
-if args.labels:
-    section("Evaluation")
-    task("Evaluating performance on test data set")
-    efile = open(os.path.join(args.outdir, 'labels.db'), 'wb+')
-    pred_out = numpy.memmap(efile, dtype=numpy.int32, shape=(len(X_test), 5))
-
-    test_batches = len(range(0, len(X_test), args.batchsize))
+def make_confusion_db(name, fname, X, Y):
+    global args
+    cfile = open(os.path.join(args.outdir, fname), 'wb+')
+    cases = len(X) if not args.limit else min(args.limit, len(X))
+    pred_out = numpy.memmap(
+        cfile, dtype=numpy.float32, shape=(cases, cats), mode='w+')
+    test_batches = len(range(0, cases, args.batchsize))
     p = progress(test_batches)
-
-    i = 0
-    for inp, res in iterate_minibatches(X_test, y_test, args.batchsize, shuffle=False):
-        s = i * args.batchsize
-        pred_out[s:s+args.batchsize, :] = test_fn(inp)[0]
-        i += 1
-        p.update(i)
-    del pred_out
-    efile.close()
-
-if args.confusion:
-    section("Debugging")
-    task("Evaluating confusion matrix on training data set")
-    cfile = open(os.path.join(args.outdir, 'train-confusion.db'), 'wb+')
-    pred_out = numpy.memmap(cfile, dtype=numpy.float32, shape=(len(X_train), cats), mode='w+')
-
-    test_batches = len(range(0, len(X_train), args.batchsize))
-    p = progress(test_batches)
-
     i = 0
     accn = {}
-    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=False):
+    for inp, res in iterate_minibatches(X, Y, args.batchsize, shuffle=False):
         s = i * args.batchsize
+        if s + args.batchsize > pred_out.shape[0]:
+            inp = inp[:pred_out.shape[0] - s]
         pred_out[s:s+args.batchsize, :] = debug_fn(inp)
         i += 1
         p.update(i)
@@ -409,43 +388,79 @@ if args.confusion:
         for index in range(topindex.shape[0]):
             confusion = numpy.where(topindex[index] == res[index])[0][0]
             accn[confusion] = accn.get(confusion, 0) + 1
-        correct = 0
+        if i >= test_batches:
+            break
+    correct = 0
     for index in range(10):
         correct += accn.get(index, 0)
-        subtask("Training set acc@{}: {:.2f}%".format(
+        subtask("{} acc@{}: {:.2f}%".format(
+                name,
                 index + 1,
-                100.0 * correct / len(X_train)))
+                100.0 * correct / cases))
     del pred_out
     cfile.close()
 
-# Divides the image into 8x8 overlapping squares of 23x23 pixels, each
-# offset 15 pixels from the previous
+if args.confusion:
+    section("Debugging")
+    task("Evaluating confusion matrix on validation data")
+    make_confusion_db('Validation set', 'val.confusion.db', X_val, y_val)
+    task("Evaluating confusion matrix on training data set")
+    make_confusion_db('Training set', 'train.confusion.db', X_train, y_train)
+
+# Divides the image into 16x16 overlapping squares of 23x23 pixels, each
+# offset 7 pixels from the previous
+res = 16
+pix = 23
+st = 7
+noise = numpy.random.RandomState(123).normal(size=[pix-4, pix-4])
 def make_response_probe(image):
-    res = 16
-    pix = 27
-    st = 6
-    off = 5
     result = numpy.tile(image, (res*res, 1, 1, 1))
     for x in range(res):
         for y in range(res):
             for c in range(3):
-                v = numpy.average(
-                        result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix])
-                result[x + y * res, c, off+y*st:off+y*st+pix, off+x*st:off+x*st+pix] = (
-                        v * numpy.ones([pix, pix]))
+                avg = numpy.average(
+                        result[x + y * res, c,
+                               y*st:y*st+pix, x*st:x*st+pix])
+                anti = (avg + 0.5) * numpy.ones([pix, pix])
+                box = anti
+                box[2:pix-2,2:pix-2] += noise + 10
+                box = box % 1
+                result[x + y * res, c,
+                       y*st:y*st+pix, x*st:x*st+pix] = box
     return result
 
-if args.response:
-    section("Visualization")
-    task("Evaluating response regions on training data set")
+def make_response_file(name, fname, cname, X, Y, use_first=False):
+    global args
+    task("Evaluating response regions on %s" % name)
     assert args.batchsize == 256
-    rfile = open(os.path.join(args.outdir, 'train-response.db'), 'wb+')
-    resp_out = numpy.memmap(rfile, dtype=numpy.float32, shape=(len(X_train), 256), mode='w+')
-    p = progress(len(X_train))
-    for index in range(len(X_train)):
-        probe = make_response_probe(X_train[index])
-        correct = y_train[index]
-        resp_out[index] = debug_fn(probe)[:,correct]
+    cases = len(X) if not args.limit else min(args.limit, len(X))
+    if use_first:
+        cfile = open(os.path.join(args.outdir, cname), 'r')
+        pred = numpy.memmap(cfile, dtype=numpy.float32, mode='r')
+        pred.shape = (pred.shape[0] / cats, cats)
+        topindex = numpy.argsort(-pred, axis=1)
+    rfile = open(os.path.join(args.outdir, fname), 'wb+')
+    resp_out = numpy.memmap(rfile, dtype=numpy.float32,
+            shape=(cases, 256), mode='w+')
+    p = progress(cases)
+    for index in range(cases):
+        probe = make_response_probe(X[index])
+        if use_first:
+            toview = topindex[index][0]
+        else:
+            toview = Y[index]
+        resp_out[index] = debug_fn(probe)[:,toview]
         p.update(index + 1)
     del resp_out
     rfile.close()
+
+if args.response:
+    section("Visualization")
+    make_response_file('validation set',
+        'val.response.db', 'val.confusion.db', X_val, y_val)
+    make_response_file('training set',
+        'train.response.db', 'train.confusion.db', X_train, y_train)
+    make_response_file('validation set',
+        'val.topresponse.db', 'val.confusion.db', X_val, y_val, True)
+    make_response_file('training set',
+        'train.topresponse.db', 'train.confusion.db', X_train, y_train, True)
