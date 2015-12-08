@@ -61,9 +61,14 @@ flip_var = T.iscalar('f')
 crop_var = T.ivector('c') # ycrop, xcrop
 center = numpy.zeros((2,), dtype=numpy.int32)
 center.fill(numpy.floor((imsz - cropsz)/2))
+cast_var = T.fvector('rgb') # redcast, greencast, bluecast
+nocast = numpy.zeros((3,), dtype=numpy.float32)
+
+# color cast
+cast_t = T.shape_padleft(T.shape_padright(cast_var, 2), 1)
 
 # crop+flip
-cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz]
+cropped = input_var[:, :, crop_var[0]:crop_var[0]+cropsz, crop_var[1]:crop_var[1]+cropsz] + cast_t
 prepared = cropped[:,:,:,::flip_var]
 
 # input layer is always the same
@@ -101,7 +106,7 @@ subtask("parameter count {} ({} trainable) in {} arrays".format(
         len(saveparams)))
 
 # compile training function that updates parameters and returns training loss
-train_fn = theano.function([learning_rate, flip_var, crop_var, input_var, target_var], loss, updates=updates)
+train_fn = theano.function([learning_rate, flip_var, crop_var, cast_var, input_var, target_var], loss, updates=updates)
 
 # Create a loss expression for validation/testing. The crucial difference here
 # is that we do a deterministic forward pass through the network, disabling
@@ -115,10 +120,10 @@ test_1_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, tar
 test_5_acc = T.mean(lasagne.objectives.categorical_accuracy(test_prediction, target_var, top_k=5))
 
 # compile a second function computing the validation loss and accuracy:
-val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], [test_loss, test_1_acc, test_5_acc])
+val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center), theano.Param(cast_var, default=nocast)], [test_loss, test_1_acc, test_5_acc])
 
 # a function for debug output
-debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
+debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center), theano.Param(cast_var, default=nocast)], test_prediction)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
     assert len(inputs) == len(targets)
@@ -294,7 +299,8 @@ while epoch < end:
         flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)
-        train_loss += train_fn(learning_rates[epoch], flip, frame, inp, res)
+        cast = (numpy.round(numpy.random.rand(3)) * numpy.random.randn(3) * 0.04).astype(numpy.float32)
+        train_loss += train_fn(learning_rates[epoch], flip, frame, cast, inp, res)
         p.update(i)
         i = i+1
         if i > train_batches:
