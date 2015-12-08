@@ -1,12 +1,13 @@
 from termcolor import colored
 import datetime
+import sys
 
 def section(msg):
-    print(colored("\n::", "blue", attrs=["bold"]), colored(msg, attrs=["bold"]))
+    print(colored("\n::", "blue", attrs=["bold"]), colored(msg, attrs=["bold"]), file=sys.stderr)
 def task(msg):
-    print(colored("==>", "green", attrs=["bold"]), colored(msg, attrs=["bold"]))
+    print(colored("==>", "green", attrs=["bold"]), colored(msg, attrs=["bold"]), file=sys.stderr)
 def subtask(msg):
-    print(colored(" ->", "blue", attrs=["bold"]), colored(msg, attrs=["bold"]))
+    print(colored(" ->", "blue", attrs=["bold"]), colored(msg, attrs=["bold"]), file=sys.stderr)
 
 from progressbar import Bar, SimpleProgress, Percentage, ProgressBar, Timer
 

@@ -7,10 +7,16 @@ import os
 import os.path
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-x', '--confusion', type=argparse.FileType('r'), help='read confusion matrix from this file', default='confusion-large.db')
 parser.add_argument('-t', '--tagged', help='load tagged data from this directory', default='tagged/full')
 parser.add_argument('-d', '--devkit', help='devkit directory containing categories.txt', default='mp-dev_kit')
+parser.add_argument('-o', '--outdir', help='store trained network state in this directory', default=None)
+parser.add_argument('-n', '--network', help='name of network experiment', default='base')
+parser.add_argument('-s', '--subset', help='train or val', default='train')
 args = parser.parse_args()
+
+if args.outdir is None:
+    args.outdir = "exp-{}".format(args.network)
+
 
 categories = []
 for line in open(os.path.join(args.devkit, 'categories.txt')).readlines():
@@ -19,15 +25,19 @@ for line in open(os.path.join(args.devkit, 'categories.txt')).readlines():
 cats = len(categories)
 
 labels = {}
-for line in open(os.path.join(args.devkit, 'train.txt')).readlines():
+for line in open(os.path.join(
+        args.devkit, '%s.txt' % args.subset)).readlines():
     name, label = line.strip().split()
     labels[name] = int(label)
 
-filenames = [line.strip() for line in
-        open(os.path.join(args.tagged, 'train.filenames.txt')).readlines()]
+filenames = [line.strip() for line in open(os.path.join(
+        args.tagged, '%s.filenames.txt' % args.subset)).readlines()]
 cases = len(filenames)
 
-predictions = numpy.memmap(args.confusion, dtype=numpy.float32, shape=(cases, cats), mode='r')
+confusion_file = open(os.path.join(args.outdir,
+    '%s.confusion.db' % args.subset), 'r')
+predictions = numpy.memmap(
+    confusion_file, dtype=numpy.float32, shape=(cases, cats), mode='r')
 topindex = numpy.argsort(-predictions, axis=1)
 
 for index in range(cases):

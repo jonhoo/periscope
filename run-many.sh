@@ -4,8 +4,17 @@ run() {
 	echo "Running experiment $ex" > /dev/stderr
 	git --no-pager diff --color
 	make solve
-	rm -rf "exp-${ex}"
-	mv exp-large "exp-${ex}"
+	this="$(ls -dt exp-* | head -n1)"
+	that="exp-$ex"
+	if [ ! -e "$that" ]; then
+		mv "$this" "$that"
+	elif [ -z "${this#$that}" ]; then
+		# $this == $that
+		:
+	else
+		rm -rf "$that"
+		mv "$this" "$that"
+	fi
 }
 
 shutdown="no"

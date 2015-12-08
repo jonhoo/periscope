@@ -3,14 +3,19 @@ DK_DATA ?= ./mp-dev_kit
 MP_DATA ?= ./mp-data
 VENV = env/.built
 PYTHON = env/bin/python3
+NET ?= slim
+LIMIT ?= 0
+RESP_DIR ?= ./resp
 
 RAW = $(MMAP_FILES)/full/train.labels.db \
       $(MMAP_FILES)/full/train.images.db \
+      $(MMAP_FILES)/full/train.filenames.txt \
       #$(MMAP_FILES)/full/val.images.db \
       #$(MMAP_FILES)/full/test.images.db \
 
 SRAW = $(MMAP_FILES)/small/train.labels.db \
        $(MMAP_FILES)/small/train.images.db \
+       $(MMAP_FILES)/small/train.filenames.txt \
        #$(MMAP_FILES)/small/val.images.db \
        #$(MMAP_FILES)/small/test.images.db \
 
@@ -34,28 +39,38 @@ $(IMDATA): $(IMTGZ)
 	tar mxvzf $< -C $(MP_DATA)
 
 solve-small: $(VENV) $(SRAW) Makefile
-	$(PYTHON) main.py -o exp-small -e1 -b10 -s1 $(MMAP_FILES)/small
+	$(PYTHON) main.py --network $(NET) -e1 -b10 -s1 --tagged $(MMAP_FILES)/small
 
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
-		--outdir exp-large \
-		-e40 \
-		$(MMAP_FILES)/full
+                --network $(NET) \
+		--tagged $(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
-		--outdir exp-large \
-		-e40 \
-		--labels \
+                --network $(NET) \
 		--confusion \
 		--response \
-		$(MMAP_FILES)/full
+                --limit $(LIMIT) \
+		--tagged $(MMAP_FILES)/full
+
+
+view: $(VENV)
+	$(PYTHON) view.py \
+                --tagged $(MMAP_FILES)/full \
+                -d $(DK_DATA) \
+                --serve \
+                --network $(NET)
 
 # these technically depend on $(PYTHON), but we don't want to add that
 # dependency, because then we have to re-prepare if we ever change env.sh
 $(SRAW): $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/small
 	$(PYTHON) prepare.py -c10 -s200 $(MP_DATA)/images/ $(DK_DATA) $(MMAP_FILES)/small
+
+notgoal: prepare.py
+	mkdir -p $(MMAP_FILES)/notgoal
+	$(PYTHON) prepare.py $(RESP_DIR)/notgoal/ $(DK_DATA) $(MMAP_FILES)/notgoal
 
 $(RAW): $(IMDATA) prepare.py
 	mkdir -p $(MMAP_FILES)/full

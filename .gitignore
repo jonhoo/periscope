@@ -1,7 +1,7 @@
 *.run.patch
 test-labels.db
-plot*.png
-network*.mdl
+*.png
+*.mdl
 mp-data
 tagged
 exp-*

@@ -26,6 +26,8 @@ def dir2nd(directory, nsamples=0):
 
     # Count images
     N = sum([len(files) for _, _, files in os.walk(os.path.join(args.images, directory), followlinks=True)])
+    if not N:
+        return
 
     # Grab label map
     Ncat = None
