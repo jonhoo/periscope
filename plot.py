@@ -119,10 +119,14 @@ for i in range(len(training)):
         c = c[0].get_color()
         tlegends.append('{}, validation, top 5'.format(model))
 
+loc = 0
+if args.max <= 0.5:
+    loc = 3 # place location in bottom if graph is far up
+
 if args.atk == 0 and args.set == 'all':
-    ax_err.legend(tlegends, ncol=len(training))
+    ax_err.legend(tlegends, ncol=len(training), loc=loc)
 else:
-    ax_err.legend(tlegends)
+    ax_err.legend(tlegends, loc=loc)
 
 if args.format is None:
     plt.show(fig)
