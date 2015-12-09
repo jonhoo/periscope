@@ -80,9 +80,10 @@ plotting, or to plot multiple models on the same graph, use `plot.py`.
 To evaluate the network, use `evaluate.py`. Note that you can pass
 multiple trained models to `evaluate.py` using the `-m` flag. You will
 need to pass a matching number of network names using `-n` to tell the
-script what network layout each model was trained with. If you want
-textual labels for each image, use `-l`. The default output format is
-catered to the format used by the [6.869
+script what network layout each model was trained with. To achieve our
+top performance, combine multiple `NET=smarter` trained models. If you
+want textual labels for each image, use `-l`. The default output format
+is catered to the format used by the [6.869
 leaderboard](http://miniplaces.csail.mit.edu/leaderboard.php).
 
 ## Experimentation
