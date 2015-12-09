@@ -20,6 +20,7 @@ parser.add_argument('-t', '--title', help='plot title', default=None)
 parser.add_argument('-s', '--set', help='plot only the given dataset', choices=['training', 'validation', 'all'], default='all')
 parser.add_argument('-k', '--atk', help='plot only accuracy at top-k', type=int, choices=[5, 1, 0], default=0)
 parser.add_argument('-m', '--max', help='y upper limit', type=float, default=1.0)
+parser.add_argument('-e', '--epochs', help='do not plot past this number of epochs', type=int, default=0)
 parser.add_argument('-c', '--column', help='make plot fit single-column', action='store_true', default=False)
 args = parser.parse_args()
 
@@ -65,6 +66,9 @@ for model in args.model:
     except EOFError:
         print("Model {} is invalid".format(model.name))
         sys.exit(1)
+
+if args.epochs != 0 and args.epochs <= maxe:
+    maxe = args.epochs-1
 
 if not args.column:
     fig = plt.figure(figsize=(20, 12))
