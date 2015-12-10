@@ -217,7 +217,6 @@ def msra_a(network, cropsz, batchsz):
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu')))
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu')))
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu')))
-    network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu')))
     network = MaxPool2DLayer(network, (2,2), stride=2)
 
     network = BatchNormLayer(network)
@@ -225,10 +224,8 @@ def msra_a(network, cropsz, batchsz):
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu')))
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu')))
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu')))
-    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu')))
 
     network = BatchNormLayer(network)
-    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu')))
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu')))
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu')))
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu')))
@@ -240,4 +237,5 @@ def msra_a(network, cropsz, batchsz):
     network = DropoutLayer(network)
     network = prelu(lasagne.layers.DenseLayer(network, 512))
     network = DropoutLayer(network)
+    network = prelu(lasagne.layers.DenseLayer(network, 100))
     return network
