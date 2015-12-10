@@ -182,13 +182,23 @@ def create_eval_html(name, subset):
                 index,
                 confusion[index]))
         html.append('<tr>')
-        html.append('<td><img src="resp/tsee/' + filenames[index] + '">')
+        html.append('<td><img src="resp/chosen/' + filenames[index] + '">')
         html.append('<br>{} ({})<br>{}</td>'.format(
                 categories[top[0]],
                 top[0],
                 score[top[0]]))
-        html.append('<td><img src="resp/see/' + filenames[index] + '">')
+        html.append('<td><img src="resp/notchosen/' + filenames[index] + '">')
+        html.append('<br>NOT {} ({})<br>{}</td>'.format(
+                categories[top[0]],
+                top[0],
+                score[top[0]]))
+        html.append('<td><img src="resp/goal/' + filenames[index] + '">')
         html.append('<br>{} ({})<br>{}</td>'.format(
+                categories[correct],
+                correct,
+                score[correct]))
+        html.append('<td><img src="resp/notgoal/' + filenames[index] + '">')
+        html.append('<br>NOT {} ({})<br>{}</td>'.format(
                 categories[correct],
                 correct,
                 score[correct]))
