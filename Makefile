@@ -39,12 +39,11 @@ $(IMDATA): $(IMTGZ)
 	tar mxvzf $< -C $(MP_DATA)
 
 solve-small: $(VENV) $(SRAW) Makefile
-	$(PYTHON) main.py --network $(NET) -e1 -b10 --negative 1 -s1 --tagged $(MMAP_FILES)/small
+	$(PYTHON) main.py --network $(NET) -e1 -b10 -s1 --tagged $(MMAP_FILES)/small
 
 solve: $(VENV) $(RAW) Makefile
 	$(PYTHON) main.py \
                 --network $(NET) \
-		--negative 1 \
 		--tagged $(MMAP_FILES)/full
 
 analyze: $(VENV) $(RAW) Makefile
@@ -52,7 +51,6 @@ analyze: $(VENV) $(RAW) Makefile
                 --network $(NET) \
 		--confusion \
 		--response \
-		--negative 1 \
                 --limit $(LIMIT) \
 		--tagged $(MMAP_FILES)/full
 

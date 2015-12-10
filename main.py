@@ -18,7 +18,7 @@ import os.path
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--tagged', help='path to directory containing prepared files', default='tagged/full')
 parser.add_argument('-m', '--momentum', type=float, help='momentum', default=0.9)
-parser.add_argument('--negative', type=int, help='number of negative samples to add per batch', default=0)
+parser.add_argument('-r', '--relax', type=float, help='relax correct category by this amount', default=0.1)
 parser.add_argument('-b', '--batchsize', type=int, help='size of each mini batch', default=256)
 parser.add_argument('-s', '--batch-stop', type=int, help='stop after this many batches each epoch', default=0)
 parser.add_argument('-e', '--epoch-stop', type=int, help='stop after this many epochs', default=0)
@@ -122,9 +122,10 @@ val_fn = theano.function([input_var, target_var, theano.Param(flip_var, default=
 debug_fn = theano.function([input_var, theano.Param(flip_var, default=1), theano.Param(crop_var, default=center)], test_prediction)
 
 def target_from_res(res):
-    target = numpy.zeros((len(res), cats), dtype=theano.config.floatX)
+    global args
+    target = numpy.zeros((len(res), cats), dtype=theano.config.floatX)+(args.relax/(cats-1))
     for ii in range(len(res)):
-        target[ii, res[ii]] = 1.0
+        target[ii, res[ii]] = 1.0-args.relax
     return target
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False, test=False):
@@ -285,7 +286,7 @@ while epoch < end:
     start_time = time.time()
 
     # How much work will we have to do?
-    train_batches = len(range(0, len(X_train), args.batchsize-args.negative))
+    train_batches = len(range(0, len(X_train), args.batchsize))
     val_batches = len(range(0, len(X_val), args.batchsize))
     train_test_batches = val_batches
 
@@ -297,16 +298,11 @@ while epoch < end:
     p = progress(train_batches)
     i = 1
     frame = numpy.zeros((2,), dtype=numpy.int32)
-    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize-args.negative, shuffle=True):
+    for inp, res in iterate_minibatches(X_train, y_train, args.batchsize, shuffle=True):
         flip = numpy.random.randint(0, 2) and 1 or -1
         frame[0] = numpy.random.randint(0, imsz - cropsz)
         frame[1] = numpy.random.randint(0, imsz - cropsz)
         res = target_from_res(res)
-
-        # mix in some negative examples
-        if args.negative != 0:
-            inp = numpy.concatenate([inp, numpy.random.rand(args.negative, 3, imsz, imsz).astype(theano.config.floatX)])
-            res = numpy.concatenate([res, numpy.zeros((args.negative, cats), dtype=theano.config.floatX)+(1.0/cats)])
 
         train_loss += train_fn(learning_rates[epoch], flip, frame, inp, res)
         p.update(i)
