@@ -212,11 +212,18 @@ def choosy(network, cropsz, batchsz):
     return network
 
 def msra_a(network, cropsz, batchsz):
-    network = BatchNormLayer(network)
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=2, W=HeUniform('relu'), pad='same'))
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
+    network = BatchNormLayer(network)
+    network = MaxPool2DLayer(network, (2,2), stride=2)
+
+    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
+    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
+    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
+    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
+    network = BatchNormLayer(network)
     network = MaxPool2DLayer(network, (2,2), stride=2)
 
     network = BatchNormLayer(network)
@@ -224,15 +231,9 @@ def msra_a(network, cropsz, batchsz):
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
     network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
-
     network = BatchNormLayer(network)
-    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
-    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
-    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
-    network = prelu(Conv2DLayer(network, 256, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
     network = MaxPool2DLayer(network, (2,2), stride=2) # technically a Spatial Pyramid Pooling
 
-    network = BatchNormLayer(network)
     network = prelu(lasagne.layers.DenseLayer(network, 512))
     network = DropoutLayer(network)
     network = prelu(lasagne.layers.DenseLayer(network, 512))
