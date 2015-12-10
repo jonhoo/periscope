@@ -212,7 +212,7 @@ def choosy(network, cropsz, batchsz):
     return network
 
 def msra_a(network, cropsz, batchsz):
-    network = prelu(Conv2DLayer(network, 128, (3,3), stride=2, W=HeUniform('relu'), pad='same'))
+    network = prelu(Conv2DLayer(network,  96, (5,5), stride=2, W=HeUniform('relu'), pad='same'))
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
     network = prelu(Conv2DLayer(network, 128, (3,3), stride=1, W=HeUniform('relu'), pad='same'))
