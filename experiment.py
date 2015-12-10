@@ -235,6 +235,9 @@ def msra_a(network, cropsz, batchsz):
     network = prelu(Conv2DLayer(network, 512, (3,3), stride=1, W=HeUniform('relu')))
     network = MaxPool2DLayer(network, (2,2), stride=2) # technically a Spatial Pyramid Pooling
 
-    network = dropout(prelu(lasagne.layers.DenseLayer(network, 4096)))
-    network = dropout(prelu(lasagne.layers.DenseLayer(network, 4096)))
+    network = BatchNormLayer(network)
+    network = prelu(lasagne.layers.DenseLayer(network, 4096))
+    network = DropoutLayer(network)
+    network = prelu(lasagne.layers.DenseLayer(network, 4096))
+    network = DropoutLayer(network)
     return network
