@@ -211,20 +211,16 @@ def choosy(network, cropsz, batchsz):
 
     return network
 
-def gooey_gadget(network_in, conv_in, conv_out, stride):
-    network_c = Conv2DLayer(network_in, conv_in, (1, 1),
+def gooey_gadget(network_in, conv_add, stride):
+    network_c = Conv2DLayer(network_in, conv_add / 2, (1, 1),
         W=HeUniform('relu'))
     network_c = prelu(network_c)
     network_c = BatchNormLayer(network_c)
-    network_c = Conv2DLayer(network_c, conv_out, (3, 3), stride=stride,
+    network_c = Conv2DLayer(network_c, conv_add, (3, 3), stride=stride,
         W=HeUniform('relu'))
     network_c = prelu(network_c)
     network_c = BatchNormLayer(network_c)
     network_p = MaxPool2DLayer(network_in, (3, 3), stride=stride)
-    # network_p = Conv2DLayer(network_p, pool_out, (1, 1),
-    #    W=HeUniform('relu'))
-    # network_p = prelu(network_p)
-    # network_p = BatchNormLayer(network_p)
     return ConcatLayer((network_c, network_p))
 
 def gooey(network, cropsz, batchsz):
@@ -247,38 +243,34 @@ def gooey(network, cropsz, batchsz):
     network = MaxPool2DLayer(network, (3, 3), stride=2)
 
     # 2nd. Data size 55 -> 27
-    # 27*27*48 = 67068
-    network = Conv2DLayer(network, 92, (3, 3), stride=2,
-        W=HeUniform('relu'))
-    network = prelu(network)
-    network = BatchNormLayer(network)
-    # 27*27*64 = 46656
-    network = Conv2DLayer(network, 64, (3, 3), stride=1, pad='same',
+    # 27*27*96 = 69984
+    network = Conv2DLayer(network, 96, (3, 3), stride=2,
         W=HeUniform('relu'))
     network = prelu(network)
     network = BatchNormLayer(network)
 
     # 3rd.  Data size 27 -> 13, 192 + 144
-    # 13*13*192 = 32448
-    network = Conv2DLayer(network, 192, (3, 3), stride=1, pad='same',
+    # 13*13*224 = 37856
+    network = gooey_gadget(network, 128, 2) # 92 + 128 = 224 channels
+
+    # 4th.  Data size 13 -> 11 -> 5
+    # 11*11*192 = 23232
+    network = Conv2DLayer(network, 192, (3, 3),
         W=HeUniform('relu'))
     network = prelu(network)
     network = BatchNormLayer(network)
-    network = MaxPool2DLayer(network, (3, 3), stride=2)
 
-    # 4th.  Data size 13 -> 11 -> 5
-    # 11*11*320 = 38720
-    network = gooey_gadget(network, 64, 128, 1) # 192 + 128 = 320 channels
-    # 5*5*512 = 12800
-    network = gooey_gadget(network, 64, 192, 2) # 320 + 192 = 512 channels
+    # 5*5*412 = 10400
+    network = gooey_gadget(network, 224, 2) # 192 + 224 = 416 channels
 
     # 5th. Data size 5 -> 3
-    # 3*3*832 = 7488
-    network = gooey_gadget(network, 80, 320, 1) # 512 + 320 = 832 channels
+    # 3*3*672 = 6048
+    network = gooey_gadget(network, 256, 1) # 416 + 256 = 672 channels
 
     # 6th. Data size 3 -> 1, 592 + 512 channels
-    # 1*1*1344 = 1344
-    network = gooey_gadget(network, 128, 512, 1) # 832 + 512 = 1344 channels
+    # 1*1*1184 = 1184
+    network = gooey_gadget(network, 512, 1) # 672 + 512 = 1184 channels
 
     return network
+
 
