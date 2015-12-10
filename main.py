@@ -37,7 +37,7 @@ if args.outdir is None:
     args.outdir = "exp-{}".format(args.network)
 
 imsz = 128
-cropsz = 117
+cropsz = 112
 
 section("Setup")
 task("Loading data")
