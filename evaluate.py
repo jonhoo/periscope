@@ -33,7 +33,7 @@ if len(args.model) != 1 and not args.combine:
     sys.exit(1)
 
 imsz = 128
-cropsz = 117
+cropsz = 112
 
 center = numpy.floor((imsz - cropsz)/2)
 crops = [0, center, imsz - cropsz - 1]
