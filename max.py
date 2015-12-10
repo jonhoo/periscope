@@ -19,6 +19,9 @@ parser.add_argument('-s', '--set', help='plot only the given dataset', choices=[
 parser.add_argument('-k', '--atk', help='plot only accuracy at top-k', type=int, choices=[5, 1], default=1)
 args = parser.parse_args()
 
+if args.names is None:
+    args.names = [m.name for m in args.model]
+
 i = -1
 for model in args.model:
     i += 1
